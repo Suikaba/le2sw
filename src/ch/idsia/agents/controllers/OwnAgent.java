@@ -28,6 +28,7 @@
 package ch.idsia.agents.controllers;
 
 import ch.idsia.agents.Agent;
+import ch.idsia.benchmark.mario.engine.GeneralizerLevelScene;
 import ch.idsia.benchmark.mario.engine.sprites.Mario;
 import ch.idsia.benchmark.mario.environments.Environment;
 
@@ -43,19 +44,67 @@ public class OwnAgent extends BasicMarioAIAgent implements Agent
 int trueJumpCounter = 0;
 int trueSpeedCounter = 0;
 
+final int MIN_R = 0;
+final int MAX_R = 18;
+final int MIN_C = 0;
+final int MAX_C = 18;
+
+final int NO_OBSTACLE = 0;
+
+boolean good_jump = false;
+
 public OwnAgent()
 {
     super("OwnAgent");
     reset();
 }
 
+public boolean isObstacle(int r, int c) {
+	final int val = getReceptiveFieldCellValue(r, c);
+	return val == GeneralizerLevelScene.BRICK
+		   || val == GeneralizerLevelScene.BORDER_CANNOT_PASS_THROUGH
+		   || val == GeneralizerLevelScene.FLOWER_POT_OR_CANNON
+		   || val == GeneralizerLevelScene.LADDER;
+}
+
+public boolean isGaps(int c) {
+	for(int i = MIN_R; i <= MAX_R; ++i) {
+		if(getReceptiveFieldCellValue(i, c) != NO_OBSTACLE) {
+			return false;
+		}
+	}
+	return true;
+}
+
 public void reset()
 {
-    action = new boolean[Environment.numberOfKeys];
+	action = new boolean[Environment.numberOfKeys];
 }
 
 public boolean[] getAction()
 {
+	action[Mario.KEY_RIGHT] = true;
+	action[Mario.KEY_LEFT] = false;
+	action[Mario.KEY_SPEED] = !isMarioOnGround;
+	boolean can_jump = isMarioAbleToJump || !isMarioOnGround;
+	if(isMarioAbleToJump) {
+		good_jump = false;
+	}
+	
+	if(isObstacle(marioEgoRow, marioEgoCol + 1)) {
+		action[Mario.KEY_JUMP] = can_jump;
+	}
+	if(isGaps(marioEgoCol + 1)) {
+		action[Mario.KEY_JUMP] = can_jump;
+		if(isMarioAbleToJump && isMarioOnGround && !isGaps(marioEgoCol)) {
+			good_jump = true;
+		}
+		if(!good_jump) {
+			action[Mario.KEY_RIGHT] = false;
+			action[Mario.KEY_LEFT] = true;
+		}
+	}
+	
     return action;
 }
 }

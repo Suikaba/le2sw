@@ -27,6 +27,8 @@
 
 package ch.idsia.scenarios;
 
+import java.util.Random;
+
 import ch.idsia.benchmark.tasks.BasicTask;
 import ch.idsia.tools.MarioAIOptions;
 import ch.idsia.agents.Agent;
@@ -44,9 +46,17 @@ public static void main(String[] args)
     final Agent agent = new ForwardJumpingAgent();
     marioAIOptions.setAgent(agent);
     
-    int seed = 99;
+    Random R = new Random();
+    int seed = R.nextInt(100);
+    int difficulty = R.nextInt(100);
     marioAIOptions.setLevelRandSeed(seed);
+    marioAIOptions.setLevelDifficulty(difficulty);
     
+    marioAIOptions.setCannonsCount(true);
+    //marioAIOptions.setFlatLevel(true);
+    marioAIOptions.setEnemies("swgkwgwrkw");
+    //marioAIOptions.setEnemies("off");
+
     final BasicTask basicTask = new BasicTask(marioAIOptions);
     basicTask.setOptionsAndReset(marioAIOptions);
     basicTask.doEpisodes(1,true,1);
