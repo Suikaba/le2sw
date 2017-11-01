@@ -89,7 +89,7 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 	
 	public boolean canJump()
 	{
-		if(!isMarioAbleToJump) {
+		if(!isMarioAbleToJump && isMarioOnGround) {
 			return false;
 		}
 		if(leftCounter >= 5) {
@@ -134,6 +134,9 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 		} else {
 			rightCounter = 0;
 		}
+		if(action[Mario.KEY_JUMP]) {
+			action[Mario.KEY_JUMP] = isMarioAbleToJump || !isMarioOnGround;
+		}
 	}
 
 	public boolean[] getAction()
@@ -144,13 +147,12 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 		goRight();
 		action[Mario.KEY_SPEED] = true;
 		
-		boolean can_jump = isMarioAbleToJump || !isMarioOnGround;
 		if(isMarioAbleToJump) {
 			good_jump = false;
 		}
 		if(isObstacle(marioEgoRow, marioEgoCol + 1)) {
 			if(canJump()) {
-				action[Mario.KEY_JUMP] = can_jump;
+				action[Mario.KEY_JUMP] = true;
 				goRight();
 			} else {
 				goLeft();
@@ -171,7 +173,7 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 			}
 		}
 		if(isGaps(marioEgoCol + 1)) {
-			action[Mario.KEY_JUMP] = can_jump;
+			action[Mario.KEY_JUMP] = true;
 			if(isMarioAbleToJump && isMarioOnGround && !isGaps(marioEgoCol)) {
 				good_jump = true;
 			}
