@@ -10,6 +10,9 @@ import task4.level.Level;
 
 public class Simulator {
 	
+	/*
+	 * 探索ノード
+	 */
 	private class SearchNode {
 		// 前状態
 		private SearchNode parent = null;
@@ -25,9 +28,9 @@ public class Simulator {
 		public float remainingTimeEstimated = 0;
 		private float remainingTime = 0;
 		
-		public boolean hasBeenHurt = false;
 		public boolean isInVisitedList = false;
 		
+		// todo: スナップショットはここで取るべきな気がする
 		public SearchNode(SearchNode parent, boolean[] action, int repetition) {
 			this.parent = parent;
 			this.action = action;
@@ -49,7 +52,9 @@ public class Simulator {
 			ArrayList<SearchNode> list = new ArrayList<SearchNode>();
 			ArrayList<boolean[]> actions = enumerateNextActions(this);
 			for(boolean[] action : actions) {
-				list.add(new SearchNode(this, action, repetition));	
+				SearchNode newNode = new SearchNode(this, action, repetition);
+				newNode.simulate();
+				list.add(newNode);
 			}
 			return list;
 		}
@@ -74,55 +79,86 @@ public class Simulator {
 		
 		// 現状態のノードを指定されたステップ数シミュレートする
 		public float simulate() {
+			// シミュレート中の状態を現状態にセットし，コピーをとる．
 			levelScene = parent.snapshot;
-			parent.snapshot = getSnapshot();
+			parent.snapshot = getSnapshot(levelScene);
 			
-			final int initialDamage = calcMarioDamage();
+			int initialDamage = calcMarioDamage();
+			float initX = levelScene.mario.x;
+			float initY = levelScene.mario.y;
 			
 			for(int i = 0; i < repetition; ++i) {
-				//int x = (int)levelScene.mario.x;
-				//int y = (int)levelScene.mario.y;
-				//System.out.println("[Debug]advanceStep: " + x + ", " + y);
 				advanceStep(action);
-				//x = (int)levelScene.mario.x;
-				//y = (int)levelScene.mario.y;
-				//System.out.println("[Debug]advanceStep: " + x + ", " + y);
 			}
 			
-			// todo
+			int lastDamage = calcMarioDamage();
+			float endX = levelScene.mario.x;
+			float endY = levelScene.mario.y;
+			
 			remainingTime = calcRemainingTime(levelScene.mario.x, levelScene.mario.xa)
-							+ (calcMarioDamage() - initialDamage) * (1000000 - 100 * timeElapsed);
+							+ (lastDamage - initialDamage) * (1000000 - 100 * timeElapsed);
 			if(isInVisitedList) {
 				remainingTime += visitedListPenalty;
 			}
-			hasBeenHurt = (calcMarioDamage() != initialDamage);
-			snapshot = getSnapshot();
+			if(lastDamage > initialDamage) {
+				//System.out.println("[SearchNode.simulate]: getDamage, time: " + remainingTime);
+			} else {
+				//System.out.println("[SearchNode.simulate]: safe");
+				//System.out.println("jump action");
+			}
+			// シミュレート後の状態を現状態にスナップショットを取っておく
+			snapshot = getSnapshot(levelScene);
+
+			// debug
+			//System.out.println("[SearchNode Debug]");
+			//snapshot.printSpritePos();
+			//System.out.println("[SearchNode]: Mario Pos -- " + snapshot.mario.x + " " + snapshot.mario.y + " " + snapshot.mario.xa + " " + snapshot.mario.ya + "\n");
 			
 			return remainingTime;
 		}
 	}
+	
+	/*
+	 * 探索ノードの比較用．コストが小さい方を優先的に取り出す．
+	 */
+	public class SearchNodeComparator implements Comparator<SearchNode> {
+		@Override
+		public int compare(SearchNode n1, SearchNode n2) {
+			float cost1 = n1.getRemainingTime() + n1.timeElapsed * 0.9f;
+			float cost2 = n2.getRemainingTime() + n2.timeElapsed * 0.9f;
+			if(cost1 < cost2) {
+				return -1;
+			} else if (cost1 > cost2) {
+				return 1;
+			} else {
+				return 0;
+			}
+		}
+	}
 
 	
+	/*
+	 * Simulator のメンバ変数
+	 */
+	
+	// シミュレーターでの大本の Scene
 	public LevelScene levelScene = null;
 	private LevelScene workScene = null;
-	private ArrayList<SearchNode> nodePool = null;
 	
 	private SearchNode bestNode;
 	private SearchNode furthestNode;
 	
-	private float currentSearchStartingMarioXPos;
-	
 	private ArrayList<boolean[]> actionPlan = null;
 	private ArrayList<int[]> visitedStates = new ArrayList<int[]>();
 	public int timeBudget = 20;
-	private static final int visitedListPenalty = 1500;
-	private int ticksBeforeReplanning = 0;
+	private static final int visitedListPenalty = 100;
 	
 	private final int timeLimit = 40;
 	
+	
 	public Simulator() {
 		levelScene = new LevelScene();
-		levelScene.level = new Level(300, 15);
+		levelScene.level = new Level(400, 15);
 	}
 	
 	public void resetSimMario(MarioAIOptions options) {
@@ -152,39 +188,48 @@ public class Simulator {
 		return action;
 	}
 	
-	private ArrayList<boolean[]> extractPlan() {
+	private ArrayList<boolean[]> extractPlan(SearchNode state) {
 		ArrayList<boolean[]> actions = new ArrayList<boolean[]>();
-		if(bestNode == null) {
+		if(state == null) {
 			// スタート直後
-			for(int i = 0; i < 10; ++i) {
+			for(int i = 0; i < 5; ++i) {
 				actions.add(createAction(false, true, false, true, false));
 			}
 			return actions;
 		}
 		
-		SearchNode currentNode = bestNode;
+		SearchNode currentNode = state;
+		// O(n^2) だけど n が小さいと仮定して add(0, action) でもいいのかなあ．
 		while(currentNode.parent != null) {
 			for(int i = 0; i < currentNode.repetition; ++i) {
-				actions.add(0, currentNode.action);
+				actions.add(currentNode.action);
 			}
 			currentNode = currentNode.parent;
 		}
+		Collections.reverse(actions);
 		return actions;
 	}
 	
 	private ArrayList<boolean[]> enumerateNextActions(SearchNode node) {
 		ArrayList<boolean[]> actions = new ArrayList<boolean[]>();
-		// ジャンプ．優先度はこっちを高くする．
-		if(canJump(node, true)) {
-			actions.add(createAction(false, true, true, true, false));
-			actions.add(createAction(false, true, true, false, false));
-			actions.add(createAction(true, false, true, true, false));
+		boolean jump_ok = canJump(node, true);
+		if(jump_ok) {
+			// 左右なしジャンプ．
+			actions.add(createAction(false, false, true, true, false));
+			actions.add(createAction(false, false, true, false, false));
 		}
 		// 左右への移動（高速と低速）．これはいつでもできる．
-		actions.add(createAction(false, true, false, true, false));
 		actions.add(createAction(false, true, false, false, false));
-		actions.add(createAction(true, false, false, true, false));
+		actions.add(createAction(false, true, false, true, false));
+		if(jump_ok) {
+			actions.add(createAction(false, true, true, true, false));
+		}
 		actions.add(createAction(true, false, false, false, false));
+		actions.add(createAction(true, false, false, true, false));
+		if(jump_ok) {
+			actions.add(createAction(true, false, true, true, false));
+		}
+		
 		return actions;
 	}
 	
@@ -219,6 +264,9 @@ public class Simulator {
 	
 	private int calcMarioDamage() {
 		Mario mario = levelScene.mario;
+		if(mario.x < 0) {
+			return 10;
+		}
 		if(levelScene.level.isGap[(int)(mario.x / 16)]
 		   && mario.y > levelScene.level.gapHeight[(int)(mario.x / 16)] * 16) {
 			mario.addDamage(5);
@@ -226,67 +274,20 @@ public class Simulator {
 		return mario.getDamage();
 	}
 	
+	// 探索開始ノードを現状態にセットし，探索の準備を整える．
 	private void startSearch(int repetition) {
 		SearchNode root = new SearchNode(null, null, repetition);
-		root.snapshot = getSnapshot();
-		nodePool = new ArrayList<SearchNode>();
+		root.snapshot = getSnapshot(levelScene);
 		visitedStates.clear();
-		nodePool.addAll(root.createNextNode());
-		currentSearchStartingMarioXPos = levelScene.mario.x;
 		bestNode = root;
 		furthestNode = root;
 	}
 	
-	private void search(long startTime) {
-		SearchNode currentNode = bestNode;
-		boolean currentGood = false;
-		int ticks = 0;
-		int maxRight = 176;
-		
-		while(nodePool.size() != 0
-			  && (bestNode.snapshot.mario.x - currentSearchStartingMarioXPos < maxRight || !currentGood)
-			  && (System.currentTimeMillis() - startTime < timeLimit))
-		{
-			ticks++;
-			
-			currentNode = pickBestNode(nodePool);
-			currentGood = false;
-			float realRemainingTime = currentNode.simulate();
-			if(realRemainingTime < 0) {
-				continue;
-			} else {
-				int marioX = (int)currentNode.snapshot.mario.x;
-				int marioY = (int)currentNode.snapshot.mario.y;
-				if(!currentNode.isInVisitedList
-				   && isInVisited(marioX, marioY, currentNode.timeElapsed)) {
-					realRemainingTime += visitedListPenalty;
-					currentNode.isInVisitedList = true;
-					currentNode.remainingTime = realRemainingTime;
-					currentNode.remainingTimeEstimated = realRemainingTime;
-					nodePool.add(currentNode);
-				} else if(realRemainingTime - currentNode.remainingTimeEstimated > 0.1) {
-					currentNode.remainingTimeEstimated = realRemainingTime;
-					nodePool.add(currentNode);
-				} else {
-					currentGood = true;
-					visited(marioX, marioY, currentNode.timeElapsed);
-					nodePool.addAll(currentNode.createNextNode());
-				}
-			}
-			
-			if(currentGood) {
-				bestNode = currentNode;
-				furthestNode = currentNode;
-			}
-		}
-		
-		levelScene = currentNode.snapshot;
-	}
-	
-	public LevelScene getSnapshot() {
+	// あるシーンの状態のコピーを取得する．
+	public LevelScene getSnapshot(LevelScene l) {
 		LevelScene snapshot = null;
 		try {
-			snapshot = (LevelScene)levelScene.clone();
+			snapshot = (LevelScene)l.clone();
 		} catch(CloneNotSupportedException ex) {
 			ex.printStackTrace();
 		}
@@ -297,42 +298,58 @@ public class Simulator {
 		levelScene = l;
 	}
 	
+	// 現状態を1ステップ進める．
 	public void advanceStep(boolean[] action) {
 		levelScene.mario.setKeys(action);
 		levelScene.tick();
 	}
 	
 	public boolean[] optimise() {
-		long startTime = System.currentTimeMillis();
-		LevelScene currentState = getSnapshot();
+		LevelScene currentScene = getSnapshot(levelScene);
 		if(workScene == null) {
 			workScene = levelScene;
 		}
-		int planAhead = 2;
-		int stepsPerSearch = 2;
-		ticksBeforeReplanning--;
-		if(ticksBeforeReplanning <= 0 || actionPlan.size() == 0) {
-			actionPlan = extractPlan();
-			if(actionPlan.size() < planAhead) {
-				planAhead = actionPlan.size();
-			}
-			for(int i = 0; i < planAhead; ++i) {
-				advanceStep(actionPlan.get(i));
-			}
-			workScene = getSnapshot();
-			startSearch(stepsPerSearch);
-			ticksBeforeReplanning = planAhead;
-		}
-		restoreState(workScene);
-		search(startTime);
-		workScene = getSnapshot();
 		
-		boolean[] action = new boolean[Environment.numberOfKeys];
-		if(actionPlan.size() > 0) {
-			action = actionPlan.remove(0);
+		long startTime = System.currentTimeMillis();
+		
+		startSearch(1);
+		
+		int beamWidth = 20;
+		int maxDepth = 100;
+		Comparator<SearchNode> comparator = new SearchNodeComparator();
+		PriorityQueue<SearchNode> currentStates = new PriorityQueue<SearchNode>(beamWidth, comparator);
+		currentStates.add(bestNode);
+		for(int i = 0; i < maxDepth && currentStates.size() > 0; ++i) {
+			if(System.currentTimeMillis() - startTime > 10) {
+				beamWidth = 10;
+			}
+			if(System.currentTimeMillis() - startTime > 20) {
+				break;
+			}
+			PriorityQueue<SearchNode> nextStates = new PriorityQueue<SearchNode>(beamWidth, comparator);
+			for(int j = 0; j < beamWidth; ++j) {
+				if(currentStates.isEmpty()) {
+					break;
+				}
+				SearchNode now = currentStates.poll();
+				//if(isInVisited((int)now.snapshot.mario.x, (int)now.snapshot.mario.y, now.timeElapsed)) {
+				//	now.isInVisitedList = true;
+				//	continue;
+				//}
+				nextStates.addAll(now.createNextNode());
+				//visited((int)now.snapshot.mario.x, (int)now.snapshot.mario.y, now.timeElapsed);
+			}
+			currentStates = nextStates;
+			//System.out.println("optimise, step " + i + "  -> state size: " + currentStates.size());
 		}
-		restoreState(currentState);
-		return action;
+		if(currentStates.isEmpty()) {
+			System.out.println("[Simulator.optimise] Warning!! Empty queue!!");
+		}
+		bestNode = currentStates.poll();
+		ArrayList<boolean[]> actions = extractPlan(bestNode);
+		restoreState(currentScene);
+		//System.out.println("depth: " + i + "  final pos: " + levelScene.mario.x + " " + levelScene.mario.y);
+		return actions.get(0);
 	}
 	
 	private void visited(int x, int y, int t) {
@@ -340,9 +357,9 @@ public class Simulator {
 	}
 	
 	private boolean isInVisited(int x, int y, int t) {
-		int timeDiff = 5;
-		int xDiff = 2;
-		int yDiff = 2;
+		final int timeDiff = 2;
+		final int xDiff = 2;
+		final int yDiff = 2;
 		for(int[] v : visitedStates) {
 			if(Math.abs(v[0] - x) < xDiff
 			   && Math.abs(v[1] - y) < yDiff
@@ -354,17 +371,11 @@ public class Simulator {
 		return false;
 	}
 	
-	private SearchNode pickBestNode(ArrayList<SearchNode> nodePool) {
-		SearchNode best = null;
-		float bestCost = 10000000;
-		for(SearchNode n : nodePool) {
-			float cost = n.getRemainingTime() + n.timeElapsed * 0.9f;
-			if(cost < bestCost) {
-				best = n;
-				bestCost = cost;
-			}
-		}
-		nodePool.remove(best);
-		return best;
+	// for debug
+	public void printScene() {
+		System.out.println("[Simulator Debug]");
+		levelScene.printSpritePos();
+		System.out.println("Mario.pos = (" + levelScene.mario.x + ", " + levelScene.mario.y + ")");
 	}
+
 }

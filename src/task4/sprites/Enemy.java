@@ -55,7 +55,7 @@ int height = 24;
 
 public float yaa = 1;
 
-private LevelScene levelScene;
+//private LevelScene levelScene;
 public int facing;
 public int deadTime = 0;
 public boolean flyDeath = false;
@@ -80,7 +80,7 @@ public Enemy(LevelScene levelScene, int x, int y, int dir, int type, boolean win
     this.mapX = mapX;
     this.mapY = mapY;
 
-    this.levelScene = levelScene;
+    this.world = levelScene;
     xPicO = 8;
     yPicO = 31;
 
@@ -124,21 +124,22 @@ public Enemy(LevelScene levelScene, int x, int y, int dir, int type, boolean win
 
 public void collideCheck()
 {
-    if (deadTime != 0)
+	if (deadTime != 0)
     {
         return;
     }
-
-    float xMarioD = levelScene.mario.x - x;
-    float yMarioD = levelScene.mario.y - y;
-//        float w = 16;
+	
+	float xMarioD = world.mario.x - x;
+    float yMarioD = world.mario.y - y;
+    //System.out.println("[Enemy]: collideCheck mariopos = " + world.mario.x + " " + world.mario.y); 
+    
     if (xMarioD > -width * 2 - 4 && xMarioD < width * 2 + 4)
     {
-        if (yMarioD > -height && yMarioD < levelScene.mario.height)
+        if (yMarioD > -height && yMarioD < world.mario.height)
         {
-            if ((kind != KIND_SPIKY && kind != KIND_SPIKY_WINGED && kind != KIND_ENEMY_FLOWER) && levelScene.mario.ya > 0 && yMarioD <= 0 && (!levelScene.mario.onGround || !levelScene.mario.wasOnGround))
+            if ((kind != KIND_SPIKY && kind != KIND_SPIKY_WINGED && kind != KIND_ENEMY_FLOWER) && world.mario.ya > 0 && yMarioD <= 0 && (!world.mario.onGround || !world.mario.wasOnGround))
             {
-                levelScene.mario.stomp(this);
+            	world.mario.stomp(this);
                 if (winged)
                 {
                     winged = false;
@@ -153,17 +154,17 @@ public void collideCheck()
 
                     if (kind == KIND_RED_KOOPA || kind == KIND_RED_KOOPA_WINGED)
                     {
-                        spriteContext.addSprite(new Shell(levelScene, x, y, 0));
+                        spriteContext.addSprite(new Shell(world, x, y, 0));
                     } else if (kind == KIND_GREEN_KOOPA || kind == KIND_GREEN_KOOPA_WINGED)
                     {
-                        spriteContext.addSprite(new Shell(levelScene, x, y, 1));
+                        spriteContext.addSprite(new Shell(world, x, y, 1));
                     }
                     ++LevelScene.killedCreaturesTotal;
                     ++LevelScene.killedCreaturesByStomp;
                 }
             } else
             {
-                levelScene.mario.getHurt(this.kind);
+            	world.mario.getHurt(this.kind);
             }
         }
     }
@@ -181,7 +182,7 @@ public void move()
             deadTime = 1;
             for (int i = 0; i < 8; i++)
             {
-                levelScene.addSprite(new Sparkle((int) (x + Math.random() * 16 - 8) + 4, (int) (y - Math.random() * 8) + 4, (float) (Math.random() * 2 - 1), (float) Math.random() * -1, 0, 1, 5));
+            	world.addSprite(new Sparkle((int) (x + Math.random() * 16 - 8) + 4, (int) (y - Math.random() * 8) + 4, (float) (Math.random() * 2 - 1), (float) Math.random() * -1, 0, 1, 5));
             }
             spriteContext.removeSprite(this);
         }
@@ -296,7 +297,7 @@ public boolean move(float xa, float ya)
         if (isBlocking(x + xa + width, y + ya - height / 2, xa, ya)) collide = true;
         if (isBlocking(x + xa + width, y + ya, xa, ya)) collide = true;
 
-        if (avoidCliffs && onGround && !levelScene.level.isBlocking((int) ((x + xa + width) / 16), (int) ((y) / 16 + 1), xa, 1))
+        if (avoidCliffs && onGround && !world.level.isBlocking((int) ((x + xa + width) / 16), (int) ((y) / 16 + 1), xa, 1))
             collide = true;
     }
     if (xa < 0)
@@ -305,7 +306,7 @@ public boolean move(float xa, float ya)
         if (isBlocking(x + xa - width, y + ya - height / 2, xa, ya)) collide = true;
         if (isBlocking(x + xa - width, y + ya, xa, ya)) collide = true;
 
-        if (avoidCliffs && onGround && !levelScene.level.isBlocking((int) ((x + xa - width) / 16), (int) ((y) / 16 + 1), xa, 1))
+        if (avoidCliffs && onGround && !world.level.isBlocking((int) ((x + xa - width) / 16), (int) ((y) / 16 + 1), xa, 1))
             collide = true;
     }
 
@@ -350,7 +351,7 @@ private boolean isBlocking(float _x, float _y, float xa, float ya)
     int y = (int) (_y / 16);
     if (x == (int) (this.x / 16) && y == (int) (this.y / 16)) return false;
 
-    boolean blocking = levelScene.level.isBlocking(x, y, xa, ya);
+    boolean blocking = world.level.isBlocking(x, y, xa, ya);
 
 //        byte block = levelScene.level.getBlock(x, y);
 
@@ -421,7 +422,7 @@ public void bumpCheck(int xTile, int yTile)
 
     if (x + width > xTile * 16 && x - width < xTile * 16 + 16 && yTile == (int) ((y - 1) / 16))
     {
-        xa = -levelScene.mario.facing * 2;
+        xa = -world.mario.facing * 2;
         ya = -5;
         flyDeath = true;
         if (spriteTemplate != null) spriteTemplate.isDead = true;

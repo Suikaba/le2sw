@@ -67,7 +67,8 @@ public class BeamSearchAgent extends BasicMarioAIAgent
 
 	public boolean[] getAction()
 	{
-		long startTime = System.currentTimeMillis();
+		// for debug
+		boolean calcTime = true;
 		
 		boolean[] ac = new boolean[Environment.numberOfKeys];
 		ac[Mario.KEY_RIGHT] = true;
@@ -76,8 +77,12 @@ public class BeamSearchAgent extends BasicMarioAIAgent
 		float[] enemies = enemiesFloatPos;
 		float[] realMarioPos = marioFloatPos;
 		
-		System.out.println("start Sim");
+		long startTime = System.currentTimeMillis();
 		simulator.advanceStep(action);
+		long endTime = System.currentTimeMillis();
+		if(calcTime) {
+			//System.out.println("[simulator.advanceStep]: calc time -> " + (endTime - startTime) + " ms.");	
+		}
 		if(simulator.levelScene.mario.x != realMarioPos[0] || simulator.levelScene.mario.y != realMarioPos[1]) {
 			if(realMarioPos[0] == lastX && realMarioPos[1] == lastY) {
 				return ac;
@@ -91,13 +96,31 @@ public class BeamSearchAgent extends BasicMarioAIAgent
 			simulator.levelScene.mario.y = realMarioPos[1];
 		}
 		
+		startTime = System.currentTimeMillis();
 		simulator.setLevelPart(scene, enemies);
+		endTime = System.currentTimeMillis();
+		if(calcTime) {
+			//System.out.println("[simulator.setLevelPart]: calc time -> " + (endTime - startTime) + " ms.");
+		}
+		
 		lastX = realMarioPos[0];
 		lastY = realMarioPos[1];
 		
+		startTime = System.currentTimeMillis();
 		action = simulator.optimise();
-		System.out.println("endSim");
-		simulator.timeBudget += 39 - (int)(System.currentTimeMillis() - startTime);
+		endTime = System.currentTimeMillis();
+		if(calcTime) {
+			System.out.println("[simulator.optimise]: calc time -> " + (endTime - startTime) + " ms.");
+		}
+		//System.out.println("mario on Ground " + simulator.levelScene.mario.isOnGround());
+		//System.out.println("endSim");
+		//System.out.println("real mario on ground: " + this.isMarioOnGround);
+		if(calcTime) {
+			System.out.println("[Agent getAction]: total calc time -> " + (int)(System.currentTimeMillis() - startTime) + " ms.");
+		}
+		
+		//simulator.printScene();
+		//System.out.println("RealMarioPos: " + realMarioPos[0] + " " + realMarioPos[1]);
 
 		return action;
 	}

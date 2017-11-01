@@ -36,7 +36,6 @@ public class BulletBill extends Sprite
 private int width = 4;
 int height = 24;
 
-private LevelScene world;
 public int facing;
 
 public boolean avoidCliffs = false;

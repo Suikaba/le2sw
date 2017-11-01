@@ -45,8 +45,15 @@ public static void main(String[] args)
     final BeamSearchAgent agent = new BeamSearchAgent();
     marioAIOptions.setAgent(agent);
     
-    marioAIOptions.setArgs("-lde on -ltb off -ld 2 -ls 0 -le g");
-    //marioAIOptions.setArgs("-lca off -lhs off -ld 1 -ls 0 -le off");
+    //marioAIOptions.setArgs("-lde on -ltb off -ld 2 -ls 0 -le g"); // task4-1
+    //marioAIOptions.setArgs("-lde on -ltb off -ld 2 -ls 0 -le off"); // task4-1 not enemy
+    //marioAIOptions.setArgs("-lca off -lhs off -ld 1 -ls 0 -le off"); // task2
+    marioAIOptions.setArgs("-lca off -lhs off -ld 1 -ls 0 -le g"); // task3
+    
+    // easy Task
+    //marioAIOptions.setFlatLevel(true);
+    //marioAIOptions.setBlocksCount(false);
+    //marioAIOptions.setGapsCount(false);
     
     agent.resetSimMario(marioAIOptions);
     

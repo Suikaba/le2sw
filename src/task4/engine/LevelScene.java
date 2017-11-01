@@ -71,7 +71,6 @@ private static boolean onLadder = false;
 
 private Random randomGen = new Random(0);
 
-final private List<Float> enemiesFloatsList = new ArrayList<Float>();
 final private float[] marioFloatPos = new float[2];
 final private int[] marioState = new int[11];
 private int numberOfHiddenCoinsGained = 0;
@@ -98,6 +97,13 @@ public static int killedCreaturesTotal;
 public static int killedCreaturesByFireBall;
 public static int killedCreaturesByStomp;
 public static int killedCreaturesByShell;
+
+public int fireballsOnScreen = 0;
+List<Shell> shellsToCheck = new ArrayList<Shell>();
+
+// デバッグ情報用
+public final int DEBUG_MARIO = 1;
+public final int DEBUG_LEVEL = 1 << DEBUG_MARIO;
 
 
 public LevelScene()
@@ -141,7 +147,7 @@ protected Object clone() throws CloneNotSupportedException {
 			if(s.kind == Sprite.KIND_SHELL && ((Shell)s).carried && l.mario.carried != null) {
 				l.mario.carried = s;
 			}
-			//s.levelScene = l;
+			s.world = l;
 			clone.add(s);
 		}
 	}
@@ -150,49 +156,6 @@ protected Object clone() throws CloneNotSupportedException {
 	return l;
 }
 
-
-// TODO: !H!: Move to MarioEnvironment !!
-
-public float[] getEnemiesFloatPos()
-{
-    enemiesFloatsList.clear();
-    for (Sprite sprite : sprites)
-    {
-        // TODO:[M]: add unit tests for getEnemiesFloatPos involving all kinds of creatures
-        if (sprite.isDead()) continue;
-        switch (sprite.kind)
-        {
-            case Sprite.KIND_GOOMBA:
-            case Sprite.KIND_BULLET_BILL:
-            case Sprite.KIND_ENEMY_FLOWER:
-            case Sprite.KIND_GOOMBA_WINGED:
-            case Sprite.KIND_GREEN_KOOPA:
-            case Sprite.KIND_GREEN_KOOPA_WINGED:
-            case Sprite.KIND_RED_KOOPA:
-            case Sprite.KIND_RED_KOOPA_WINGED:
-            case Sprite.KIND_SPIKY:
-            case Sprite.KIND_SPIKY_WINGED:
-            case Sprite.KIND_SHELL:
-            {
-                enemiesFloatsList.add((float) sprite.kind);
-                enemiesFloatsList.add(sprite.x - mario.x);
-                enemiesFloatsList.add(sprite.y - mario.y);
-            }
-        }
-    }
-
-    float[] enemiesFloatsPosArray = new float[enemiesFloatsList.size()];
-
-    int i = 0;
-    for (Float F : enemiesFloatsList)
-        enemiesFloatsPosArray[i++] = F;
-
-    return enemiesFloatsPosArray;
-}
-
-public int fireballsOnScreen = 0;
-
-List<Shell> shellsToCheck = new ArrayList<Shell>();
 
 public void checkShellCollide(Shell shell)
 {
@@ -231,6 +194,8 @@ public void tick()
         xCam = level.length * cellSize - GlobalOptions.VISUAL_COMPONENT_WIDTH;
 
     fireballsOnScreen = 0;
+    
+    //System.out.println("[LevelScene tick()]: sprite size -> " + sprites.size());
 
     for (Sprite sprite : sprites)
     {
@@ -496,20 +461,6 @@ public int getMarioStatus()
     return mario.getStatus();
 }
 
-/**
- * first and second elements of the array are x and y Mario coordinates correspondingly
- *
- * @return an array of size 2*(number of creatures on screen) including mario
- */
-public float[] getCreaturesFloatPos()
-{
-    float[] enemies = this.getEnemiesFloatPos();
-    float ret[] = new float[enemies.length + 2];
-    System.arraycopy(this.getMarioFloatPos(), 0, ret, 0, 2);
-    System.arraycopy(enemies, 0, ret, 2, enemies.length);
-    return ret;
-}
-
 public boolean isMarioOnGround()
 { return mario.isOnGround(); }
 
@@ -619,10 +570,13 @@ public boolean setLevelScene(byte[][] data) {
 				if(datum != 1 && level.getBlock(x, y) != 14) {
 					//level.setBlock(x, y, datum);
 					if(datum == GeneralizerLevelScene.BRICK) {
+						//System.out.println("[LevelScene]: set BRICK");
 						level.setBlock(x, y, (byte)(0 + 1 * 16));
 					} else if(datum == GeneralizerLevelScene.UNBREAKABLE_BRICK) {
+						System.out.println("[LevelScene]: set UNBREAKABLE");
 						level.setBlock(x, y, (byte)(4 + 2 + 1 * 16));
 					} else if(datum == GeneralizerLevelScene.BORDER_CANNOT_PASS_THROUGH) {
+						//System.out.println("[LevelScene]: set BORDER_CANNOT_PASS_THROUGH");
 						level.setBlock(x, y, (byte)(1 + 9 * 16));	
 					} else if(datum == GeneralizerLevelScene.FLOWER_POT_OR_CANNON) {
 						//System.out.println("FLOWER POT");
@@ -636,8 +590,8 @@ public boolean setLevelScene(byte[][] data) {
 	}
 	
 	if(gapBorderHeight == gapBorderMinusTwoHeight && gapBorderMinusOneHeight < gapBorderHeight) {
-		//System.out.println("set block");
-		//level.setBlock(MarioXInMap + HalfObsWidth - 2, gapBorderMinusOneHeight, (byte)14);
+		// found a canon
+		//level.setBlock(MarioXInMap + HalfObsWidth - 2, gapBorderMinusOneHeight, (byte)(14 + 0 * 16));
 	}
 	if(gapAtLast && !gapAtSecondLast) {
 		int holeWidth = 3;
@@ -651,20 +605,26 @@ public boolean setLevelScene(byte[][] data) {
 		}
 		for(int i = gapBorderMinusOneHeight; i < 16; ++i) {
 			//System.out.println("set block");
-			//level.setBlock(MarioXInMap + HalfObsWidth + holeWidth, gapBorderMinusOneHeight, (byte)4);
+			// BORDER_CANNOT_PASS_THROUGHT
+			level.setBlock(MarioXInMap + HalfObsWidth + holeWidth, gapBorderMinusOneHeight, (byte)4);
 		}
 		return true;
 	}
 	return false;
 }
 
+// ここに与えられる敵座標は，マリオからの相対座標であることに注意せよ
 public boolean setEnemies(float[] enemies) {
 	boolean requireReplanning = false;
 	List<Sprite> newSprites = new ArrayList<Sprite>();
 	for(int i = 0; i < enemies.length; i += 3) {
 		int kind = (int)enemies[i];
-		float x = enemies[i + 1];
-		float y = enemies[i + 2];
+		// 絶対座標に直す
+		float x = enemies[i + 1] + mario.x;
+		float y = enemies[i + 2] + mario.y;
+		//System.out.println("[LevelScene]: enemies -> " + x + " " + y);
+		//float x = enemies[i + 1];
+		//float y = enemies[i + 2];
 		// todo: kind の値について調査する
 		if(kind == -1 || kind == 15) {
 			continue;
@@ -707,7 +667,7 @@ public boolean setEnemies(float[] enemies) {
 					sprite.x = x;
 				}
 				if((sprite.y - y) != 0 && sprite.kind == Sprite.KIND_ENEMY_FLOWER) {
-					//((Enemy)sprite).ya = (y - sprite.lastAccurateY) * 0.89f;
+					((Enemy)sprite).ya = (y - sprite.lastY) * 0.89f;
 					sprite.y = y;
 				}
 				enemyFound = true;
@@ -715,8 +675,9 @@ public boolean setEnemies(float[] enemies) {
 			
 			if(enemyFound) {
 				newSprites.add(sprite);
-				//sprite.lastAccurateX = x;
-				//sprite.lastAccurateY = y;
+				sprite.lastX = x;
+				sprite.lastY = y;
+				break;
 			}
 		}
 		
@@ -736,8 +697,8 @@ public boolean setEnemies(float[] enemies) {
 				sprite = new Enemy(this, (int)x, (int)y, -1, type, winged, (int)x / 16, (int)y / 16);
 				sprite.xa = 2;
 			}
-			//sprite.lastAccurateX = x;
-			//sprite.lastAccurateY = y;
+			sprite.lastX = x;
+			sprite.lastY = y;
 			sprite.spriteTemplate = new SpriteTemplate(type);
 			newSprites.add(sprite);
 		}
@@ -751,6 +712,17 @@ public boolean setEnemies(float[] enemies) {
 	}
 	this.sprites = newSprites;
 	return requireReplanning;
+}
+
+
+// for debug
+void printSpritePos() {
+	for(Sprite sprite : this.sprites) {
+		if(sprite.kind != Sprite.KIND_GOOMBA) {
+			continue;
+		}
+		System.out.println("[LevelScene enemy pos]: " + sprite.x + " " + sprite.y + " " + (sprite.x - sprite.lastX));
+	}
 }
 
 

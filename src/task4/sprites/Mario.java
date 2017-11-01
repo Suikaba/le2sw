@@ -207,6 +207,8 @@ private void savePrevState()
 
 public void move()
 {
+	//System.out.println("[Mario]: call move ");
+	//System.out.println("[Mario]: current pos -> " + x + " " + y);
 	if (GlobalOptions.isFly)
     {
         xa = ya = 0;
@@ -385,7 +387,7 @@ public void move()
 
     if (y > levelScene.level.height * LevelScene.cellSize + LevelScene.cellSize) {
     	die("Gap");
-    	System.out.println("Falling gaps");
+    	//System.out.println("Falling gaps");
     }
         
 
@@ -518,7 +520,6 @@ private boolean move(float xa, float ya)
         else if (isBlocking(x + xa + width, y + ya, xa, 0)) collide = true;
         else if (isBlocking(x + xa - width, y + ya + 1, xa, ya)) collide = true;
         else if (isBlocking(x + xa + width, y + ya + 1, xa, ya)) collide = true;
-        //System.out.println("collide: " + collide);
     }
     if (ya < 0)
     {
@@ -549,6 +550,7 @@ private boolean move(float xa, float ya)
 
     if (collide)
     {
+    	//System.out.println("[Mario move2]: collide");
         if (xa < 0)
         {
             x = (int) ((x - width) / 16) * 16 + width;
@@ -600,6 +602,7 @@ private boolean isBlocking(final float _x, final float _y, final float xa, final
         levelScene.bump(x, y, large);
     }
 
+    //System.out.println("[Mario isBlocking]: " + blocking);
     return blocking;
 }
 
@@ -649,13 +652,14 @@ public void stomp(final Shell shell)
 
 public void getHurt(final int spriteKind)
 {
-    if (deathTime > 0 || isMarioInvulnerable) {
+	if (deathTime > 0 || isMarioInvulnerable) {
     	return;
     }
     if (invulnerableTime > 0) {
     	return;
     }
     
+    System.out.println("[Mario] get hurt! by " + spriteKind);
     ++damage;
     ++collisionsWithCreatures;
     levelScene.appendBonusPoints(-MarioEnvironment.IntermediateRewardsSystemOfValues.kills);
@@ -691,8 +695,9 @@ public void die(final String reasonOfDeath)
     xDeathPos = (int) x;
     yDeathPos = (int) y;
     deathTime = 25;
+    damage += 2;
     //levelScene.paused = true;
-    System.out.println("Simulate Mario Die");
+    //System.out.println("[Mario die]: Simulate Mario " + reasonOfDeath);
     status = Mario.STATUS_DEAD;
 }
 

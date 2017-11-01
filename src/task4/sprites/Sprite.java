@@ -29,6 +29,7 @@ package task4.sprites;
 
 import ch.idsia.benchmark.mario.engine.GlobalOptions;
 import ch.idsia.benchmark.mario.engine.MarioVisualComponent;
+import task4.engine.LevelScene;
 import task4.level.SpriteTemplate;
 
 import java.awt.*;
@@ -69,6 +70,10 @@ protected static float AIR_INERTIA = 0.89f;
 
 public float xOld, yOld, x, y, xa, ya;
 public int mapX, mapY;
+
+// append
+public float lastX, lastY; // 直前の正確な座標
+public LevelScene world;
 
 public int xPic, yPic;
 public int wPic = 32;
