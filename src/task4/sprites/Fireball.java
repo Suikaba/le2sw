@@ -36,7 +36,7 @@ public class Fireball extends Sprite
 private static float GROUND_INERTIA = 0.89f;
 private static float AIR_INERTIA = 0.89f;
 
-private float runTime;
+//private float runTime;
 private boolean onGround = false;
 
 private int width = 4;
@@ -76,10 +76,6 @@ public void move()
 {
     if (deadTime > 0)
     {
-        for (int i = 0; i < 8; i++)
-        {
-            world.addSprite(new Sparkle((int) (x + Math.random() * 8 - 4) + 4, (int) (y + Math.random() * 8 - 4) + 2, (float) Math.random() * 2 - 1 - facing, (float) Math.random() * 2 - 1, 0, 1, 5));
-        }
         spriteContext.removeSprite(this);
 
         return;
@@ -105,7 +101,7 @@ public void move()
 
     xFlipPic = facing == -1;
 
-    runTime += (Math.abs(xa)) + 5;
+    //runTime += (Math.abs(xa)) + 5;
 
     xPic = (anim) % 4;
 
@@ -228,8 +224,6 @@ private boolean isBlocking(float _x, float _y, float xa, float ya)
     if (x == (int) (this.x / 16) && y == (int) (this.y / 16)) return false;
 
     boolean blocking = world.level.isBlocking(x, y, xa, ya);
-
-    byte block = world.level.getBlock(x, y);
 
     return blocking;
 }

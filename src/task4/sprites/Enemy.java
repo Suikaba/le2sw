@@ -31,8 +31,6 @@ import ch.idsia.benchmark.mario.engine.Art;
 import ch.idsia.benchmark.mario.engine.GlobalOptions;
 import task4.engine.LevelScene;
 
-import java.awt.*;
-
 
 public class Enemy extends Sprite
 {
@@ -128,11 +126,11 @@ public void collideCheck()
     {
         return;
     }
-	
+
 	float xMarioD = world.mario.x - x;
     float yMarioD = world.mario.y - y;
-    //System.out.println("[Enemy]: collideCheck mariopos = " + world.mario.x + " " + world.mario.y); 
-    
+    //System.out.println("[Enemy]: collideCheck mariopos = " + world.mario.x + " " + world.mario.y);
+
     if (xMarioD > -width * 2 - 4 && xMarioD < width * 2 + 4)
     {
         if (yMarioD > -height && yMarioD < world.mario.height)
@@ -180,10 +178,11 @@ public void move()
         if (deadTime == 0)
         {
             deadTime = 1;
-            for (int i = 0; i < 8; i++)
+            // エフェクトはいらない
+            /*for (int i = 0; i < 8; i++)
             {
             	world.addSprite(new Sparkle((int) (x + Math.random() * 16 - 8) + 4, (int) (y - Math.random() * 8) + 4, (float) (Math.random() * 2 - 1), (float) Math.random() * -1, 0, 1, 5));
-            }
+            }*/
             spriteContext.removeSprite(this);
         }
 
@@ -353,8 +352,6 @@ private boolean isBlocking(float _x, float _y, float xa, float ya)
 
     boolean blocking = world.level.isBlocking(x, y, xa, ya);
 
-//        byte block = levelScene.level.getBlock(x, y);
-
     return blocking;
 }
 
@@ -377,7 +374,6 @@ public boolean shellCollideCheck(Shell shell)
             winged = false;
             hPic = -hPic;
             yPicO = -yPicO + 16;
-//                System.out.println("shellCollideCheck");
             ++LevelScene.killedCreaturesTotal;
             ++LevelScene.killedCreaturesByShell;
             return true;
@@ -407,7 +403,6 @@ public boolean fireballCollideCheck(Fireball fireball)
             winged = false;
             hPic = -hPic;
             yPicO = -yPicO + 16;
-//                System.out.println("fireballCollideCheck");
             ++LevelScene.killedCreaturesTotal;
             ++LevelScene.killedCreaturesByFireBall;
             return true;
@@ -430,47 +425,8 @@ public void bumpCheck(int xTile, int yTile)
         winged = false;
         hPic = -hPic;
         yPicO = -yPicO + 16;
-//            System.out.println("bumpCheck: mostelikely shell killed other creature");
     }
 }
 
-public void render(Graphics og)
-{
-    if (winged)
-    {
-        int xPixel = (int) (xOld + (x - xOld)) - xPicO;
-        int yPixel = (int) (yOld + (y - yOld)) - yPicO;
 
-        if (kind == KIND_GREEN_KOOPA ||
-                kind == KIND_RED_KOOPA ||
-                kind == KIND_GREEN_KOOPA_WINGED ||
-                kind == KIND_RED_KOOPA_WINGED)
-        {
-        } else
-        {
-            xFlipPic = !xFlipPic;
-            og.drawImage(sheet[wingTime / 4 % 2][4], xPixel + (xFlipPic ? wPic : 0) + (xFlipPic ? 10 : -10), yPixel + (yFlipPic ? hPic : 0) - 8, xFlipPic ? -wPic : wPic, yFlipPic ? -hPic : hPic, null);
-            xFlipPic = !xFlipPic;
-        }
-    }
-
-    super.render(og);
-
-    if (winged)
-    {
-        int xPixel = (int) (xOld + (x - xOld)) - xPicO;
-        int yPixel = (int) (yOld + (y - yOld)) - yPicO;
-
-        if (kind == KIND_GREEN_KOOPA ||
-                kind == KIND_RED_KOOPA ||
-                kind == KIND_GREEN_KOOPA_WINGED ||
-                kind == KIND_RED_KOOPA_WINGED)
-        {
-            og.drawImage(sheet[wingTime / 4 % 2][4], xPixel + (xFlipPic ? wPic : 0) + (xFlipPic ? 10 : -10), yPixel + (yFlipPic ? hPic : 0) - 10, xFlipPic ? -wPic : wPic, yFlipPic ? -hPic : hPic, null);
-        } else
-        {
-            og.drawImage(sheet[wingTime / 4 % 2][4], xPixel + (xFlipPic ? wPic : 0) + (xFlipPic ? 10 : -10), yPixel + (yFlipPic ? hPic : 0) - 8, xFlipPic ? -wPic : wPic, yFlipPic ? -hPic : hPic, null);
-        }
-    }
-}
 }

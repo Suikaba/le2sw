@@ -27,12 +27,10 @@
 
 package task4.sprites;
 
-import ch.idsia.benchmark.mario.engine.GlobalOptions;
-import ch.idsia.benchmark.mario.engine.MarioVisualComponent;
+import java.awt.Image;
+
 import task4.engine.LevelScene;
 import task4.level.SpriteTemplate;
-
-import java.awt.*;
 
 public class Sprite implements Cloneable
 {
@@ -175,7 +173,7 @@ public void move()
     y += ya;
 }
 
-public void render(final Graphics og)
+/*public void render(final Graphics og)
 {
     if (!visible) return;
 
@@ -224,19 +222,19 @@ public void render(final Graphics og)
             int k;
             // horizontal lines
             og.setColor(Color.BLACK);
-            for (k = -marioRow - 1 /*-rows / 2 - 1*/; k < rows - marioRow/*rows / 2*/; k++)
-                og.drawLine((int) x - marioCol * htOfRow - 8/*width / 2*/, (int) (y + k * htOfRow), (int) x + (columns - marioCol) * htOfRow - 8 /*(x + width / 2)*/, (int) (y + k * htOfRow));
+            for (k = -marioRow - 1 -rows / 2 - 1; k < rows - marioRowrows / 2; k++)
+                og.drawLine((int) x - marioCol * htOfRow - 8width / 2, (int) (y + k * htOfRow), (int) x + (columns - marioCol) * htOfRow - 8 (x + width / 2), (int) (y + k * htOfRow));
 
 //                og.setColor(Color.RED);
             // vertical lines
             int wdOfRow = 16;// length / (rows);
-            for (k = -marioCol - 1 /*-columns / 2 - 1*/; k < columns - marioCol /*columns / 2 + 1*/; k++)
-                og.drawLine((int) (x + k * wdOfRow + 8), (int) y - marioRow * htOfRow - 16/*height / 2 - 8*/, (int) (x + k * wdOfRow + 8), (int) y + (height - marioRow) * htOfRow - 16 /*(y + height / 2 - 8)*/);
+            for (k = -marioCol - 1 -columns / 2 - 1; k < columns - marioCol columns / 2 + 1; k++)
+                og.drawLine((int) (x + k * wdOfRow + 8), (int) y - marioRow * htOfRow - 16height / 2 - 8, (int) (x + k * wdOfRow + 8), (int) y + (height - marioRow) * htOfRow - 16 (y + height / 2 - 8));
         }
         og.setColor(Color.GREEN);
         MarioVisualComponent.drawString(og, String.valueOf(this.kind), (int) x - 4, (int) y - 8, 2);
     }
-}
+}*/
 
 public final void tick()
 {

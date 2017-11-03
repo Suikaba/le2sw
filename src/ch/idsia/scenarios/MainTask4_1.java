@@ -29,8 +29,7 @@ package ch.idsia.scenarios;
 
 import ch.idsia.benchmark.tasks.BasicTask;
 import ch.idsia.tools.MarioAIOptions;
-import ch.idsia.agents.Agent;
-import task4.agents.*;
+import task4.agents.BeamSearchAgent;
 
 /**
  * Created by IntelliJ IDEA. User: Sergey Karakovskiy, sergey at idsia dot ch Date: Mar 17, 2010 Time: 8:28:00 AM
@@ -44,19 +43,19 @@ public static void main(String[] args)
 
     final BeamSearchAgent agent = new BeamSearchAgent();
     marioAIOptions.setAgent(agent);
-    
-    //marioAIOptions.setArgs("-lde on -ltb off -ld 2 -ls 0 -le g"); // task4-1
+
+    marioAIOptions.setArgs("-lde on -ltb off -ld 2 -ls 0 -le g"); // task4-1
     //marioAIOptions.setArgs("-lde on -ltb off -ld 2 -ls 0 -le off"); // task4-1 not enemy
     //marioAIOptions.setArgs("-lca off -lhs off -ld 1 -ls 0 -le off"); // task2
-    marioAIOptions.setArgs("-lca off -lhs off -ld 1 -ls 0 -le g"); // task3
-    
+    //marioAIOptions.setArgs("-lca off -lhs off -ld 1 -ls 0 -le g"); // task3
+
     // easy Task
-    //marioAIOptions.setFlatLevel(true);
-    //marioAIOptions.setBlocksCount(false);
-    //marioAIOptions.setGapsCount(false);
-    
+    marioAIOptions.setFlatLevel(true);
+    marioAIOptions.setBlocksCount(false);
+    marioAIOptions.setGapsCount(false);
+
     agent.resetSimMario(marioAIOptions);
-    
+
     final BasicTask basicTask = new BasicTask(marioAIOptions);
     basicTask.setOptionsAndReset(marioAIOptions);
     basicTask.doEpisodes(1,true,1);

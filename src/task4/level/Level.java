@@ -27,9 +27,15 @@
 
 package task4.level;
 
-import ch.idsia.tools.MarioAIOptions;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.ArrayList;
 
-import java.io.*;
+import ch.idsia.tools.MarioAIOptions;
 
 public class Level implements Serializable, Cloneable
 {
@@ -118,7 +124,7 @@ public static final int BIT_BREAKABLE = 1 << 5;
 public static final int BIT_PICKUPABLE = 1 << 6;
 public static final int BIT_ANIMATED = 1 << 7;
 
-public static objCounters counters;
+public objCounters counters;
 
 //private final int FILE_HEADER = 0x271c4178;
 public int length;
@@ -140,6 +146,7 @@ public int yExit;
 // append
 public boolean[] isGap;
 public int[] gapHeight;
+public ArrayList<int[]> modifiedMapTiles = new ArrayList<int[]>(0);
 
 public Level(int length, int height)
 {
@@ -154,7 +161,7 @@ public Level(int length, int height)
         map = new byte[length][height];
         data = new byte[length][height];
         spriteTemplates = new SpriteTemplate[length][height];
-        
+
         isGap = new boolean[length];
         gapHeight = new int[length];
         for(int i = 0; i < length; ++i) {
@@ -174,7 +181,11 @@ public Level(int length, int height)
 @Override
 public Object clone() throws CloneNotSupportedException {
 	Level l = (Level)super.clone();
-	// todo
+	ArrayList<int[]> modifiedClone = new ArrayList<int[]>(modifiedMapTiles.size());
+	for(int[] item : modifiedMapTiles) {
+		modifiedClone.add((int[])item.clone());
+	}
+	l.modifiedMapTiles = modifiedClone;
 	return l;
 }
 
@@ -225,6 +236,13 @@ public byte getBlock(int x, int y)
     if (y < 0) return 0;
     if (x >= length) x = length - 1;
     if (y >= height) y = height - 1;
+    if((Level.TILE_BEHAVIORS[map[x][y] & 0xff] & Level.BIT_BREAKABLE) > 0) {
+    	for(int[] a : modifiedMapTiles) {
+    		if(a[0] == x && a[1] == y) {
+    			return (byte)0;
+    		}
+    	}
+    }
     return map[x][y];
 }
 

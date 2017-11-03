@@ -374,10 +374,6 @@ public void move()
 
     if (sliding)
     {
-        for (int i = 0; i < 1; i++)
-        {
-            levelScene.addSprite(new Sparkle((int) (x + Math.random() * 4 - 2) + facing * 8, (int) (y + Math.random() * 4) - 24, (float) (Math.random() * 2 - 1), (float) Math.random() * 1, 0, 1, 5));
-        }
         ya *= 0.5f;
     }
 
@@ -387,9 +383,8 @@ public void move()
 
     if (y > levelScene.level.height * LevelScene.cellSize + LevelScene.cellSize) {
     	die("Gap");
-    	//System.out.println("Falling gaps");
     }
-        
+
 
     if (x < 0)
     {
@@ -468,14 +463,6 @@ private void calcPic()
     if (onGround && ((facing == -1 && xa > 0) || (facing == 1 && xa < 0)))
     {
         if (xa > 1 || xa < -1) runFrame = large ? 9 : 7;
-
-        if (xa > 3 || xa < -3)
-        {
-            for (int i = 0; i < 3; i++)
-            {
-                levelScene.addSprite(new Sparkle((int) (x + Math.random() * 8 - 4), (int) (y + Math.random() * 4), (float) (Math.random() * 2 - 1), (float) Math.random() * -1, 0, 1, 5));
-            }
-        }
     }
 
     if (large)
@@ -658,8 +645,8 @@ public void getHurt(final int spriteKind)
     if (invulnerableTime > 0) {
     	return;
     }
-    
-    System.out.println("[Mario] get hurt! by " + spriteKind);
+
+    //System.out.println("[Mario] get hurt! by " + spriteKind);
     ++damage;
     ++collisionsWithCreatures;
     levelScene.appendBonusPoints(-MarioEnvironment.IntermediateRewardsSystemOfValues.kills);
@@ -707,6 +694,11 @@ public void devourFlower()
 
     if (!fire)
     {
+    	if(!large) {
+    		damage -= 2;
+    	} else {
+    		damage -= 1;
+    	}
         levelScene.mario.setMode(true, true);
     } else
     {

@@ -46,7 +46,6 @@ public static void main(String[] args)
     final Agent agent = new OwnAgent();
     marioAIOptions.setAgent(agent);
     
-    Random R = new Random();
     marioAIOptions.setArgs("-lca off -lhs off -ld 1 -ls 0 -le off");
     
     final BasicTask basicTask = new BasicTask(marioAIOptions);

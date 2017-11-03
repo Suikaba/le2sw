@@ -75,10 +75,11 @@ public void move()
         if (deadTime == 0)
         {
             deadTime = 1;
-            for (int i = 0; i < 8; i++)
+            // エフェクトはいらない
+            /*for (int i = 0; i < 8; i++)
             {
                 world.addSprite(new Sparkle((int) (x + Math.random() * 16 - 8) + 4, (int) (y - Math.random() * 8) + 4, (float) (Math.random() * 2 - 1), (float) Math.random() * -1, 0, 1, 5));
-            }
+            }*/
             spriteContext.removeSprite(this);
         }
 
@@ -119,7 +120,7 @@ public void move()
 /*    public void render(Graphics og, float alpha)
     {
         if (!visible) return;
-        
+
         int xPixel = (int)(xOld+(x-xOld)*alpha)-xPicO;
         int yPixel = (int)(yOld+(y-yOld)*alpha)-yPicO;
 

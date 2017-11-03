@@ -27,23 +27,31 @@
 
 package task4.engine;
 
-import ch.idsia.benchmark.mario.engine.GeneralizerLevelScene;
-import ch.idsia.benchmark.mario.engine.GlobalOptions;
-import ch.idsia.benchmark.mario.engine.level.LevelGenerator;
-import ch.idsia.benchmark.mario.environments.Environment;
-import ch.idsia.tools.MarioAIOptions;
-import task4.level.Level;
-import task4.level.SpriteTemplate;
-import task4.sprites.*;
-
-import java.awt.*;
+import java.awt.Point;
 import java.io.DataInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import ch.idsia.benchmark.mario.engine.GeneralizerLevelScene;
+import ch.idsia.benchmark.mario.engine.GlobalOptions;
+import ch.idsia.benchmark.mario.environments.Environment;
+import task4.level.Level;
+import task4.level.SpriteTemplate;
+import task4.sprites.BulletBill;
+import task4.sprites.CoinAnim;
+import task4.sprites.Enemy;
+import task4.sprites.FireFlower;
+import task4.sprites.Fireball;
+import task4.sprites.FlowerEnemy;
+import task4.sprites.GreenMushroom;
+import task4.sprites.Mario;
+import task4.sprites.Mushroom;
+import task4.sprites.Particle;
+import task4.sprites.Shell;
+import task4.sprites.Sprite;
+import task4.sprites.SpriteContext;
 
 public final class LevelScene implements SpriteContext, Cloneable
 {
@@ -103,7 +111,10 @@ List<Shell> shellsToCheck = new ArrayList<Shell>();
 
 // デバッグ情報用
 public final int DEBUG_MARIO = 1;
-public final int DEBUG_LEVEL = 1 << DEBUG_MARIO;
+public final int DEBUG_BLOCK = 2;
+
+public final int DEBUG_LEVEL = 0;
+//public final int DEBUG_LEVEL = 1 << DEBUG_MARIO | 1 << DEBUG_BLOCK;
 
 
 public LevelScene()
@@ -117,7 +128,7 @@ public LevelScene()
         e.printStackTrace();
         System.exit(0);
     }
-    
+
     Sprite.spriteContext = this;
     sprites.clear();
     this.width = GlobalOptions.VISUAL_COMPONENT_WIDTH;
@@ -137,7 +148,7 @@ protected Object clone() throws CloneNotSupportedException {
 	l.mario = (Mario)this.mario.clone();
 	l.level = (Level)this.level.clone();
 	l.mario.levelScene = l;
-	
+
 	List<Sprite> clone = new ArrayList<Sprite>(this.sprites.size());
 	for(Sprite item : this.sprites) {
 		if(item == mario) {
@@ -152,7 +163,7 @@ protected Object clone() throws CloneNotSupportedException {
 		}
 	}
 	l.sprites = clone;
-	
+
 	return l;
 }
 
@@ -194,7 +205,7 @@ public void tick()
         xCam = level.length * cellSize - GlobalOptions.VISUAL_COMPONENT_WIDTH;
 
     fireballsOnScreen = 0;
-    
+
     //System.out.println("[LevelScene tick()]: sprite size -> " + sprites.size());
 
     for (Sprite sprite : sprites)
@@ -215,7 +226,8 @@ public void tick()
     }
 
     tickCount++;
-    level.tick();
+    // パット見エフェクト処理だけなので，シミュレートにはいらない
+    //level.tick();
 
     for (int x = (int) xCam / cellSize - 1; x <= (int) (xCam + this.width) / cellSize + 1; x++)
         for (int y = (int) yCam / cellSize - 1; y <= (int) (yCam + this.height) / cellSize + 1; y++)
@@ -247,10 +259,6 @@ public void tick()
                     {
                         if ((tickCount - x * 2) % 100 == 0)
                         {
-                            for (int i = 0; i < 8; i++)
-                            {
-                                addSprite(new Sparkle(x * cellSize + 8, y * cellSize + (int) (Math.random() * cellSize), (float) Math.random() * dir, 0, 0, 1, 5));
-                            }
                             addSprite(new BulletBill(this, x * cellSize + 8 + dir * 8, y * cellSize + 15, dir));
                         }
                     }
@@ -306,9 +314,8 @@ public void tick()
                     fireball.die();
     fireballsToCheck.clear();
 
-
-    sprites.addAll(0, spritesToAdd);
     sprites.removeAll(spritesToRemove);
+    sprites.addAll(spritesToAdd);
     spritesToAdd.clear();
     spritesToRemove.clear();
 }
@@ -539,7 +546,20 @@ public boolean setLevelScene(byte[][] data) {
 	int gapBorderHeight = 0;
 	int gapBorderMinusOneHeight = 0;
 	int gapBorderMinusTwoHeight = 0;
-	
+
+	if((DEBUG_LEVEL & (1 << DEBUG_BLOCK)) > 0) {
+		System.out.println("[LevelScene setScene]: start");
+		System.out.println("Mario Position = (" + MarioXInMap + ", " + MarioYInMap + ")");
+	}
+
+	System.out.println("LevelScene:");
+	for(int i = 0; i < data.length; ++i) {
+		for(int j = 0; j < data[i].length; ++j) {
+			System.out.print(String.format("%3d", data[i][j]) + " ");
+		}
+		System.out.println();
+	}
+
 	for(int y = MarioYInMap - HalfObsHeight, obsX = 0; y < MarioYInMap + HalfObsHeight; ++y, ++obsX) {
 		for(int x = MarioXInMap - HalfObsWidth, obsY = 0; x < MarioXInMap + HalfObsWidth; ++x, ++obsY) {
 			if(x >= 0 && x <= level.xExit && y >= 0 && y < level.height) {
@@ -567,36 +587,82 @@ public boolean setLevelScene(byte[][] data) {
 					}
 					gapAtLast = false;
 				}
+				/* Copy from Level Generator
+			    first component of sum : position on  Y axis
+			    second component of sum : position  on X axis
+			    starting at 0
+			    *16 because size of the picture is 16x16 pixels
+			    0+9*16 -- left side of the ground
+			    1+9*16 -- upper side of ground; common block telling "it's smth (ground) here". Is processed further.
+			    2+9*16 -- right side of the earth
+			    3+9*16 -- peice of the earth
+			    9+0*16 -- block of a ladder
+			    14+0*16 -- cannon barrel
+			    14+1*16 -- base for cannon barrel
+			    14+2*16 -- cannon pole
+			    4+8*16 -- left piece of a hill of ground
+			    4+11*16 -- left piece of a hill of ground as well
+			    6+8*16 --  right upper peice of a hill
+			    6+11*16 -- right upper peice of a hill on earth
+			    2+2*16 --  animated coin
+			    4+2+1*16 -- a rock with animated question symbol with power up
+			    4+1+1*16 -- a rock with animated question symbol with coin
+			    2+1*16 -- brick with power up. when broken becomes a rock
+			    1+1*16 -- brick with power coin. when broken becomes a rock
+			    0+1*16 -- break brick
+			    1+10*16 -- earth, bottom piece
+			    1+8*16 --  earth, upper piece
+			    3+10*16 -- piece of earth
+			    3+11*16 -- piece of earth
+			    2+8*16 -- right part of earth
+			    0+8*16 -- left upper part of earth
+			    3+8*16 -- piece of earth
+			    2+10*16 -- right bottomp iece of earth
+			    0+10*16 -- left bottom piece of earth
+			*/
+				// 与えられる data が そんなに強くない
+				// たとえば，ブロックの状態を細かく得ることはできない (区別がない
+				// どうするか考える必要がある．
+				// cf. marioai.org/marioaibenchmark/zLevels
 				if(datum != 1 && level.getBlock(x, y) != 14) {
+					if((DEBUG_LEVEL & (1 << DEBUG_BLOCK)) > 0) {
+						System.out.println("[LevelScene Block]: Found block => " + x + " " + y + "  kind = " + datum);
+					}
 					//level.setBlock(x, y, datum);
 					if(datum == GeneralizerLevelScene.BRICK) {
-						//System.out.println("[LevelScene]: set BRICK");
 						level.setBlock(x, y, (byte)(0 + 1 * 16));
-					} else if(datum == GeneralizerLevelScene.UNBREAKABLE_BRICK) {
-						System.out.println("[LevelScene]: set UNBREAKABLE");
+						//level.setBlock(x, y, (byte)(1 + 9 * 16));
+					} else if(datum == GeneralizerLevelScene.BRICK) { // BRICK が　question mark で UNBREAKABLE じゃないのわけわからんので改善すべきだろ
 						level.setBlock(x, y, (byte)(4 + 2 + 1 * 16));
 					} else if(datum == GeneralizerLevelScene.BORDER_CANNOT_PASS_THROUGH) {
 						//System.out.println("[LevelScene]: set BORDER_CANNOT_PASS_THROUGH");
-						level.setBlock(x, y, (byte)(1 + 9 * 16));	
+						level.setBlock(x, y, (byte)(1 + 9 * 16));
 					} else if(datum == GeneralizerLevelScene.FLOWER_POT_OR_CANNON) {
 						//System.out.println("FLOWER POT");
 						level.setBlock(x, y, (byte)(1 + 8 * 16));
-					} else {
+					} else if(datum == GeneralizerLevelScene.BORDER_HILL) {
+						level.setBlock(x, y, (byte)(0));
+					} else { // とりあえずそれ以外は何もないとしている -> todo
+						level.setBlock(x, y, (byte)0);
 						//System.out.println("Others: " + datum);
 					}
 				}
 			}
 		}
 	}
-	
-	if(gapBorderHeight == gapBorderMinusTwoHeight && gapBorderMinusOneHeight < gapBorderHeight) {
+	if((DEBUG_LEVEL & (1 << DEBUG_BLOCK)) > 0) {
+		System.out.println("[LevelScene setBlock] finish\n");
+	}
+
+	// ここで穴の判定するの筋がよくなさそう
+	/*if(gapBorderHeight == gapBorderMinusTwoHeight && gapBorderMinusOneHeight < gapBorderHeight) {
 		// found a canon
 		//level.setBlock(MarioXInMap + HalfObsWidth - 2, gapBorderMinusOneHeight, (byte)(14 + 0 * 16));
 	}
 	if(gapAtLast && !gapAtSecondLast) {
 		int holeWidth = 3;
 		for(int i = 0; i < holeWidth; ++i) {
-			for(int j = 0; j < 15; ++j) {
+			for(int j = 0; j <= 15; ++j) {
 				//System.out.println("set block");
 				level.setBlock(MarioXInMap + HalfObsWidth + i, j, (byte)0);
 			}
@@ -609,7 +675,7 @@ public boolean setLevelScene(byte[][] data) {
 			level.setBlock(MarioXInMap + HalfObsWidth + holeWidth, gapBorderMinusOneHeight, (byte)4);
 		}
 		return true;
-	}
+	}*/
 	return false;
 }
 
@@ -622,10 +688,7 @@ public boolean setEnemies(float[] enemies) {
 		// 絶対座標に直す
 		float x = enemies[i + 1] + mario.x;
 		float y = enemies[i + 2] + mario.y;
-		//System.out.println("[LevelScene]: enemies -> " + x + " " + y);
-		//float x = enemies[i + 1];
-		//float y = enemies[i + 2];
-		// todo: kind の値について調査する
+		// kind の値については Sprite の定数群を参照せよ
 		if(kind == -1 || kind == 15) {
 			continue;
 		}
@@ -645,9 +708,33 @@ public boolean setEnemies(float[] enemies) {
 			type = Enemy.KIND_GOOMBA_WINGED;
 			winged = true;
 			break;
+		case(Sprite.KIND_GREEN_KOOPA):
+			type = Enemy.KIND_GREEN_KOOPA;
+			break;
+		case(Sprite.KIND_GREEN_KOOPA_WINGED):
+			type = Enemy.KIND_GREEN_KOOPA_WINGED;
+			winged = true;
+			break;
+		case(Sprite.KIND_RED_KOOPA):
+			type = Enemy.KIND_RED_KOOPA;
+			break;
+		case(Sprite.KIND_RED_KOOPA_WINGED):
+			type = Enemy.KIND_RED_KOOPA_WINGED;
+			winged = true;
+			break;
+		case(Sprite.KIND_SHELL):
+			type = Enemy.KIND_SHELL;
+			break;
+		case(Sprite.KIND_SPIKY):
+			type = Enemy.KIND_SPIKY;
+			break;
+		case(Sprite.KIND_SPIKY_WINGED):
+			type = Enemy.KIND_SPIKY_WINGED;
+			winged = true;
+			break;
 		// todo
 		}
-		
+
 		if(type == -1) {
 			continue;
 		}
@@ -655,9 +742,12 @@ public boolean setEnemies(float[] enemies) {
 		boolean enemyFound = false;
 		// もともとあったもの
 		for(Sprite sprite : sprites) {
-			if(sprite.kind == kind && Math.abs(sprite.x - x) < maxDelta
-			   && (Math.abs(sprite.y - y) < maxDelta || sprite.kind == Sprite.KIND_ENEMY_FLOWER)) {
-				if(Math.abs(sprite.x - x) > 0) {
+			float diffX = Math.abs(sprite.x - x);
+			float diffY = Math.abs(sprite.y - y);
+			if(sprite.kind == kind && diffX < maxDelta && diffY < maxDelta
+			   || sprite.kind == Sprite.KIND_ENEMY_FLOWER) {
+				// 敵の横移動の速度は変化しない（向きが変わりうるのみ）
+				if(Math.abs(sprite.x - x) > 0) { // この条件式はほんまか？
 					if(sprite.kind == Sprite.KIND_SHELL) {
 						((Shell)sprite).facing *= -1;
 					} else {
@@ -671,8 +761,13 @@ public boolean setEnemies(float[] enemies) {
 					sprite.y = y;
 				}
 				enemyFound = true;
+			} else if(sprite.kind == kind && diffX < maxDelta && diffY < maxDelta) {
+				if(kind == Sprite.KIND_GREEN_MUSHROOM) {
+					System.out.println("LevelScene: GreemMushroom");
+				}
+				enemyFound = true;
 			}
-			
+
 			if(enemyFound) {
 				newSprites.add(sprite);
 				sprite.lastX = x;
@@ -680,7 +775,7 @@ public boolean setEnemies(float[] enemies) {
 				break;
 			}
 		}
-		
+
 		// もともといなかった敵
 		if(!enemyFound) {
 			requireReplanning = true;
@@ -693,6 +788,8 @@ public boolean setEnemies(float[] enemies) {
 			} else if(type == Sprite.KIND_BULLET_BILL) {
 				int dir = -1;
 				sprite = new BulletBill(this, x, y, dir);
+			} else if(type == Sprite.KIND_GREEN_MUSHROOM) {
+				sprite = new GreenMushroom(this, (int)x, (int)y);
 			} else {
 				sprite = new Enemy(this, (int)x, (int)y, -1, type, winged, (int)x / 16, (int)y / 16);
 				sprite.xa = 2;
@@ -703,7 +800,7 @@ public boolean setEnemies(float[] enemies) {
 			newSprites.add(sprite);
 		}
 	}
-	
+
 	newSprites.add(mario);
 	for(Sprite sprite : sprites) {
 		if(sprite.kind == Sprite.KIND_FIREBALL) {

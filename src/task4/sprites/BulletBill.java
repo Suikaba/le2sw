@@ -33,7 +33,7 @@ import task4.engine.LevelScene;
 
 public class BulletBill extends Sprite
 {
-private int width = 4;
+//private int width = 4;
 int height = 24;
 
 public int facing;
@@ -71,7 +71,6 @@ public void collideCheck()
 
     float xMarioD = world.mario.x - x;
     float yMarioD = world.mario.y - y;
-    float w = 16;
     if (xMarioD > -16 && xMarioD < 16)
     {
         if (yMarioD > -height && yMarioD < world.mario.height)
@@ -103,10 +102,6 @@ public void move()
         if (deadTime == 0)
         {
             deadTime = 1;
-            for (int i = 0; i < 8; i++)
-            {
-                world.addSprite(new Sparkle((int) (x + Math.random() * 16 - 8) + 4, (int) (y - Math.random() * 8) + 4, (float) (Math.random() * 2 - 1), (float) Math.random() * -1, 0, 1, 5));
-            }
             spriteContext.removeSprite(this);
         }
 
