@@ -144,8 +144,8 @@ public int xExit;
 public int yExit;
 
 // append
-public boolean[] isGap;
-public int[] gapHeight;
+/*public boolean[] isGap;
+public int[] gapHeight;*/
 public ArrayList<int[]> modifiedMapTiles = new ArrayList<int[]>(0);
 
 public Level(int length, int height)
@@ -162,12 +162,12 @@ public Level(int length, int height)
         data = new byte[length][height];
         spriteTemplates = new SpriteTemplate[length][height];
 
-        isGap = new boolean[length];
+        /*isGap = new boolean[length];
         gapHeight = new int[length];
         for(int i = 0; i < length; ++i) {
         	isGap[i] = false;
         	gapHeight[i] = 15;
-        }
+        }*/
 
         marioTrace = new int[length][height + 1];
     } catch (OutOfMemoryError e)

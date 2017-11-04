@@ -552,19 +552,19 @@ public boolean setLevelScene(byte[][] data) {
 		System.out.println("Mario Position = (" + MarioXInMap + ", " + MarioYInMap + ")");
 	}
 
-	System.out.println("LevelScene:");
+	/*System.out.println("[LevelScene mapData]:");
 	for(int i = 0; i < data.length; ++i) {
 		for(int j = 0; j < data[i].length; ++j) {
 			System.out.print(String.format("%3d", data[i][j]) + " ");
 		}
 		System.out.println();
-	}
+	}*/
 
 	for(int y = MarioYInMap - HalfObsHeight, obsX = 0; y < MarioYInMap + HalfObsHeight; ++y, ++obsX) {
 		for(int x = MarioXInMap - HalfObsWidth, obsY = 0; x < MarioXInMap + HalfObsWidth; ++x, ++obsY) {
 			if(x >= 0 && x <= level.xExit && y >= 0 && y < level.height) {
 				byte datum = data[obsX][obsY];
-				if(datum != 0 && datum != -10 && datum != 1 && obsY > lastEventX) {
+				/*if(datum != 0 && datum != -10 && datum != 1 && obsY > lastEventX) {
 					lastEventX = obsY;
 				}
 				if(datum != 0 && datum != 1 && heights[obsY] == 0) {
@@ -586,7 +586,7 @@ public boolean setLevelScene(byte[][] data) {
 						gapBorderHeight = y;
 					}
 					gapAtLast = false;
-				}
+				}*/
 				/* Copy from Level Generator
 			    first component of sum : position on  Y axis
 			    second component of sum : position  on X axis
@@ -641,7 +641,7 @@ public boolean setLevelScene(byte[][] data) {
 						//System.out.println("FLOWER POT");
 						level.setBlock(x, y, (byte)(1 + 8 * 16));
 					} else if(datum == GeneralizerLevelScene.BORDER_HILL) {
-						level.setBlock(x, y, (byte)(0));
+						level.setBlock(x, y, (byte)(4+11*16));
 					} else { // とりあえずそれ以外は何もないとしている -> todo
 						level.setBlock(x, y, (byte)0);
 						//System.out.println("Others: " + datum);
@@ -738,7 +738,7 @@ public boolean setEnemies(float[] enemies) {
 		if(type == -1) {
 			continue;
 		}
-		float maxDelta = 2.01f * 1.75f;
+		float maxDelta = 2.01f * 1.75f; // これ調整必要ですね
 		boolean enemyFound = false;
 		// もともとあったもの
 		for(Sprite sprite : sprites) {
@@ -785,7 +785,8 @@ public boolean setEnemies(float[] enemies) {
 				int flowerY = (int)y / 16;
 				//sprite = new FlowerEnemy(this, flowerX * 16 + 15, y, flowerX, flowerY, y);
 				sprite = new FlowerEnemy(this, (int)x, (int)y, flowerX, flowerY);
-			} else if(type == Sprite.KIND_BULLET_BILL) {
+			} else if(kind == Sprite.KIND_BULLET_BILL) {
+				System.out.println("hoge");
 				int dir = -1;
 				sprite = new BulletBill(this, x, y, dir);
 			} else if(type == Sprite.KIND_GREEN_MUSHROOM) {
