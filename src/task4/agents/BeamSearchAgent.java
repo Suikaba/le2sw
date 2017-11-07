@@ -30,7 +30,7 @@ package task4.agents;
 import ch.idsia.agents.controllers.BasicMarioAIAgent;
 import ch.idsia.benchmark.mario.environments.Environment;
 import ch.idsia.tools.MarioAIOptions;
-import task4.engine.Simulator;
+import task4.engine.BeamSearchSimulator;
 
 /**
  * Created by IntelliJ IDEA.
@@ -42,7 +42,7 @@ import task4.engine.Simulator;
 public class BeamSearchAgent extends BasicMarioAIAgent
 {
 	private boolean action[] = new boolean[Environment.numberOfKeys];
-	private Simulator simulator;
+	private BeamSearchSimulator simulator;
 	private float lastX = 0;
 	private float lastY = 0;
 
@@ -55,7 +55,7 @@ public class BeamSearchAgent extends BasicMarioAIAgent
 	public void reset()
 	{
 		action = new boolean[Environment.numberOfKeys];
-		simulator = new Simulator();
+		simulator = new BeamSearchSimulator();
 	}
 
 	public void resetSimMario(MarioAIOptions options) {
