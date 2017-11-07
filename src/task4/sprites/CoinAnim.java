@@ -32,33 +32,33 @@ import ch.idsia.benchmark.mario.engine.Art;
 
 public class CoinAnim extends Sprite
 {
-private int life = 16;
+	private int life = 16;
 
-public CoinAnim(int xTile, int yTile)
-{
-    kind = KIND_COIN_ANIM;
-    sheet = Art.level;
-    wPic = hPic = 16;
+	public CoinAnim(int xTile, int yTile)
+	{
+		kind = KIND_COIN_ANIM;
+		sheet = Art.level;
+		wPic = hPic = 16;
 
-    x = xTile * 16;
-    y = yTile * 16 - 16;
-    xa = 0;
-    ya = -6f;
-    xPic = 0;
-    yPic = 2;
-}
+		x = xTile * 16;
+		y = yTile * 16 - 16;
+		xa = 0;
+		ya = -6f;
+		xPic = 0;
+		yPic = 2;
+	}
 
-public void move()
-{
-    if (life-- < 0)
-    {
-        Sprite.spriteContext.removeSprite(this);
-    }
+	public void move()
+	{
+		if (life-- < 0)
+		{
+			this.world.removeSprite(this);
+		}
 
-    xPic = life & 3;
+		xPic = life & 3;
 
-    x += xa;
-    y += ya;
-    ya += 1;
-}
+		x += xa;
+		y += ya;
+		ya += 1;
+	}
 }

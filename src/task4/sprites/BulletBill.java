@@ -33,136 +33,130 @@ import task4.engine.LevelScene;
 
 public class BulletBill extends Sprite
 {
-//private int width = 4;
-int height = 24;
+	//private int width = 4;
+	int height = 24;
 
-public int facing;
+	public int facing;
 
-public boolean avoidCliffs = false;
-public int anim;
+	public boolean avoidCliffs = false;
+	public int anim;
 
-public boolean dead = false;
-private int deadTime = 0;
+	public boolean dead = false;
+	private int deadTime = 0;
 
-public BulletBill(LevelScene world, float x, float y, int dir)
-{
-    kind = KIND_BULLET_BILL;
-    sheet = Art.enemies;
+	public BulletBill(LevelScene world, float x, float y, int dir)
+	{
+		kind = KIND_BULLET_BILL;
+		sheet = Art.enemies;
 
-    this.x = x;
-    this.y = y;
-    this.world = world;
-    xPicO = 8;
-    yPicO = 31;
+		this.x = x;
+		this.y = y;
+		this.world = world;
+		xPicO = 8;
+		yPicO = 31;
 
-    height = 12;
-    facing = 0;
-    wPic = 16;
-    yPic = 5;
+		height = 12;
+		facing = 0;
+		wPic = 16;
+		yPic = 5;
 
-    xPic = 0;
-    ya = -5;
-    this.facing = dir;
-}
+		xPic = 0;
+		ya = -5;
+		this.facing = dir;
+	}
 
-public void collideCheck()
-{
-    if (dead) return;
+	public void collideCheck()
+	{
+		if (dead) return;
 
-    float xMarioD = world.mario.x - x;
-    float yMarioD = world.mario.y - y;
-    if (xMarioD > -16 && xMarioD < 16)
-    {
-        if (yMarioD > -height && yMarioD < world.mario.height)
-        {
-            if (world.mario.ya > 0 && yMarioD <= 0 && (!world.mario.onGround || !world.mario.wasOnGround))
-            {
-                world.mario.stomp(this);
-                dead = true;
-                ++LevelScene.killedCreaturesTotal;
-                ++LevelScene.killedCreaturesByStomp;
+		float xMarioD = world.mario.x - x;
+		float yMarioD = world.mario.y - y;
+		if (xMarioD > -16 && xMarioD < 16)
+		{
+			if (yMarioD > -height && yMarioD < world.mario.height)
+			{
+				if (world.mario.ya > 0 && yMarioD <= 0 && (!world.mario.isOnGround() || !world.mario.wasOnGround())) {
+					world.mario.stomp(this);
+					dead = true;
+					++this.world.killedCreaturesTotal;
+					++this.world.killedCreaturesByStomp;
 
-                xa = 0;
-                ya = 1;
-                deadTime = 100;
-            } else
-            {
-                world.mario.getHurt(this.kind);
-            }
-        }
-    }
-}
+					xa = 0;
+					ya = 1;
+					deadTime = 100;
 
-public void move()
-{
-    if (deadTime > 0)
-    {
-        deadTime--;
+				} else {
+					world.mario.getHurt(this.kind);
+				}
+			}
+		}
+	}
 
-        if (deadTime == 0)
-        {
-            deadTime = 1;
-            spriteContext.removeSprite(this);
-        }
+	public void move()
+	{
+		if (deadTime > 0) {
+			deadTime--;
 
-        x += xa;
-        y += ya;
-        ya *= 0.95;
-        ya += 1;
+			if (deadTime == 0)
+			{
+				deadTime = 1;
+				world.removeSprite(this);
+			}
 
-        return;
-    }
+			x += xa;
+			y += ya;
+			ya *= 0.95;
+			ya += 1;
 
-    float sideWaysSpeed = 4f;
+			return;
+		}
 
-    xa = facing * sideWaysSpeed;
-    xFlipPic = facing == -1;
-    move(xa, 0);
-}
+		float sideWaysSpeed = 4f;
 
-private boolean move(float xa, float ya)
-{
-    x += xa;
-    return true;
-}
+		xa = facing * sideWaysSpeed;
+		xFlipPic = facing == -1;
+		move(xa, 0);
+	}
 
-public boolean fireballCollideCheck(Fireball fireball)
-{
-    if (deadTime != 0) return false;
+	private boolean move(float xa, float ya)
+	{
+		x += xa;
+		return true;
+	}
 
-    float xD = fireball.x - x;
-    float yD = fireball.y - y;
+	public boolean fireballCollideCheck(Fireball fireball)
+	{
+		if (deadTime != 0) return false;
 
-    if (xD > -16 && xD < 16)
-    {
-        if (yD > -height && yD < fireball.height)
-        {
-            return true;
-        }
-    }
-    return false;
-}
+		float xD = fireball.x - x;
+		float yD = fireball.y - y;
 
-public boolean shellCollideCheck(Shell shell)
-{
-    if (deadTime != 0) return false;
+		if (xD > -16 && xD < 16) {
+			if (yD > -height && yD < fireball.height) {
+				return true;
+			}
+		}
+		return false;
+	}
 
-    float xD = shell.x - x;
-    float yD = shell.y - y;
+	public boolean shellCollideCheck(Shell shell)
+	{
+		if (deadTime != 0) return false;
 
-    if (xD > -16 && xD < 16)
-    {
-        if (yD > -height && yD < shell.height)
-        {
-            dead = true;
+		float xD = shell.x - x;
+		float yD = shell.y - y;
 
-            xa = 0;
-            ya = 1;
-            deadTime = 100;
+		if (xD > -16 && xD < 16) {
+			if (yD > -height && yD < shell.height) {
+				dead = true;
 
-            return true;
-        }
-    }
-    return false;
-}
+				xa = 0;
+				ya = 1;
+				deadTime = 100;
+
+				return true;
+			}
+		}
+		return false;
+	}
 }
