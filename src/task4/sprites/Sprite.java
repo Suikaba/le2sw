@@ -151,6 +151,8 @@ public class Sprite implements Cloneable
 			return "Power up Flower";
 		case Sprite.KIND_GREEN_MUSHROOM:
 			return "Green mushroom";
+		case Sprite.KIND_WAVE_GOOMBA:
+			return "Wave Goomba";
 			/*case Sprite.KIND_PRINCESS:
             return "Princess";*/
 		}
