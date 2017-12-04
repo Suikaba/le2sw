@@ -27,8 +27,6 @@
 
 package task4.sprites;
 
-import java.awt.Image;
-
 import task4.engine.LevelScene;
 import task4.level.SpriteTemplate;
 
@@ -72,27 +70,18 @@ public class Sprite implements Cloneable
 	protected static float windCoeff = 0;
 	protected static float iceCoeff = 0;
 
-	// append
-	public float lastX, lastY; // 直前の正確な座標
-	public LevelScene world;
-
-	public int xPic, yPic;
-	public int wPic = 32;
-	public int hPic = 32;
-	public int xPicO, yPicO;
-	public boolean xFlipPic = false;
-	public boolean yFlipPic = false;
-	public Image[][] sheet;
-	public Image[][] prevSheet;
-
 	public boolean visible = true;
 
 	public int layer = 1;
 
+	// append
+	public LevelScene world;
+	public int facing;
+
 	public SpriteTemplate spriteTemplate; // 相互参照やめてほしい
 
 	@Override
-	public Object clone() throws CloneNotSupportedException {
+	public Sprite clone() throws CloneNotSupportedException {
 		Sprite s = (Sprite)super.clone();
 		if(spriteTemplate != null) {
 			s.spriteTemplate = (SpriteTemplate)this.spriteTemplate.clone();
@@ -153,8 +142,10 @@ public class Sprite implements Cloneable
 			return "Green mushroom";
 		case Sprite.KIND_WAVE_GOOMBA:
 			return "Wave Goomba";
-			/*case Sprite.KIND_PRINCESS:
-            return "Princess";*/
+		case Sprite.KIND_FIREBALL:
+			return "Fireball";
+		case Sprite.KIND_PRINCESS:
+            return "Princess";
 		}
 
 		return "Unknown";

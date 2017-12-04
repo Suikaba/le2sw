@@ -27,7 +27,6 @@
 
 package task4.sprites;
 
-import ch.idsia.benchmark.mario.engine.Art;
 import ch.idsia.benchmark.mario.engine.GlobalOptions;
 import ch.idsia.benchmark.mario.environments.Environment;
 import ch.idsia.benchmark.mario.environments.MarioEnvironment;
@@ -64,11 +63,6 @@ public final class Mario extends Sprite implements Cloneable
 	private boolean isMarioInvulnerable;
 
 	private int status = STATUS_RUNNING;
-	// for racoon when carrying the shell
-	private int prevWPic;
-	private int prevxPicO;
-	private int prevyPicO;
-	private int prevHPic;
 
 	private boolean isRacoon;
 	private float yaa = 1;
@@ -101,7 +95,7 @@ public final class Mario extends Sprite implements Cloneable
 	public int width = 4;
 	public int height = 24;
 
-	public LevelScene levelScene;
+	public LevelScene levelScene; // 相互参照してるのヤバイので，なんとかしたいですね
 	public int facing;
 
 	public int xDeathPos, yDeathPos;
@@ -111,8 +105,6 @@ public final class Mario extends Sprite implements Cloneable
 	private int invulnerableTime = 0;
 
 	public Sprite carried = null;
-
-	private int damage = 0;
 
 	private float jT;
 
@@ -129,8 +121,8 @@ public final class Mario extends Sprite implements Cloneable
 	{
 		kind = KIND_MARIO;
 		this.levelScene = levelScene;
-		x = 32; // これ適当すぎ．引数の levelScene が適切に初期化されている保証が弱い設計，良くない．
-	    y = 0;
+		x = 32;
+	    y = 32;
 	    mapX = (int) (x / 16);
 		mapY = (int) (y / 16);
 
@@ -186,38 +178,10 @@ public final class Mario extends Sprite implements Cloneable
 	public void setRacoon(boolean isRacoon)
 	{
 		this.isRacoon = isRacoon;
-		if (isRacoon)
-		{
-			savePrevState();
-
-			xPicO = 16;
-			yPicO = 31;
-			wPic = hPic = 32;
-			this.sheet = Art.racoonmario;
-		} else
-		{
-
-			this.sheet = prevSheet;
-			this.xPicO = this.prevxPicO;
-			this.yPicO = this.prevyPicO;
-			wPic = prevWPic;
-			hPic = prevHPic;
-		}
-	}
-
-	private void savePrevState()
-	{
-		this.prevSheet = this.sheet;
-		prevWPic = wPic;
-		prevHPic = hPic;
-		this.prevxPicO = xPicO;
-		this.prevyPicO = yPicO;
 	}
 
 	public void move()
 	{
-		//System.out.println("[Mario]: call move ");
-		//System.out.println("[Mario]: current pos -> " + x + " " + y);
 		if (GlobalOptions.isFly) // ここをコメントアウトすると TLE する．謎．今後の課題．
 		{
 			xa = ya = 0;
@@ -351,8 +315,6 @@ public final class Mario extends Sprite implements Cloneable
 
 		mayJump = (onGround || sliding) && !keys[KEY_JUMP];
 
-		xFlipPic = facing == -1;
-
 		runTime += (Math.abs(xa)) + 5;
 		if (Math.abs(xa) < 0.5f) {
 			runTime = 0;
@@ -448,58 +410,91 @@ public final class Mario extends Sprite implements Cloneable
 		} else {
 			height = 12;
 		}
-
-		xPic = runFrame;
 	}
 
 	private boolean move(float xa, float ya)
 	{
 		while (xa > 8) {
-			if (!move(8, 0)) return false;
+			if (!move(8, 0)) {
+				return false;
+			}
 			xa -= 8;
 		}
 		while (xa < -8) {
-			if (!move(-8, 0)) return false;
+			if (!move(-8, 0)) {
+				return false;
+			}
 			xa += 8;
 		}
 		while (ya > 8) {
-			if (!move(0, 8)) return false;
+			if (!move(0, 8)) {
+				return false;
+			}
 			ya -= 8;
 		}
 		while (ya < -8) {
-			if (!move(0, -8)) return false;
+			if (!move(0, -8)) {
+				return false;
+			}
 			ya += 8;
 		}
 
 		boolean collide = false;
 		if (ya > 0) {
-			if (isBlocking(x + xa - width, y + ya, xa, 0)) collide = true;
-			else if (isBlocking(x + xa + width, y + ya, xa, 0)) collide = true;
-			else if (isBlocking(x + xa - width, y + ya + 1, xa, ya)) collide = true;
-			else if (isBlocking(x + xa + width, y + ya + 1, xa, ya)) collide = true;
+			if (isBlocking(x + xa - width, y + ya, xa, 0)) {
+				collide = true;
+			} else if (isBlocking(x + xa + width, y + ya, xa, 0)) {
+				collide = true;
+			} else if (isBlocking(x + xa - width, y + ya + 1, xa, ya)) {
+				collide = true;
+			} else if (isBlocking(x + xa + width, y + ya + 1, xa, ya)) {
+				collide = true;
+			}
 		}
 		if (ya < 0) {
-			if (isBlocking(x + xa, y + ya - height, xa, ya)) collide = true;
-			else if (collide || isBlocking(x + xa - width, y + ya - height, xa, ya)) collide = true;
-			else if (collide || isBlocking(x + xa + width, y + ya - height, xa, ya)) collide = true;
+			if (isBlocking(x + xa, y + ya - height, xa, ya)) {
+				collide = true;
+			} else if (collide || isBlocking(x + xa - width, y + ya - height, xa, ya)) {
+				collide = true;
+			} else if (collide || isBlocking(x + xa + width, y + ya - height, xa, ya)) {
+				collide = true;
+			}
 		}
 		if (xa > 0) {
 			sliding = true;
-			if (isBlocking(x + xa + width, y + ya - height, xa, ya)) collide = true;
-			else sliding = false;
-			if (isBlocking(x + xa + width, y + ya - height / 2, xa, ya)) collide = true;
-			else sliding = false;
-			if (isBlocking(x + xa + width, y + ya, xa, ya)) collide = true;
-			else sliding = false;
+			if (isBlocking(x + xa + width, y + ya - height, xa, ya)) {
+				collide = true;
+			} else {
+				sliding = false;
+			}
+			if (isBlocking(x + xa + width, y + ya - height / 2, xa, ya)) {
+				collide = true;
+			} else {
+				sliding = false;
+			}
+			if (isBlocking(x + xa + width, y + ya, xa, ya)) {
+				collide = true;
+			} else {
+				sliding = false;
+			}
 		}
 		if (xa < 0) {
 			sliding = true;
-			if (isBlocking(x + xa - width, y + ya - height, xa, ya)) collide = true;
-			else sliding = false;
-			if (isBlocking(x + xa - width, y + ya - height / 2, xa, ya)) collide = true;
-			else sliding = false;
-			if (isBlocking(x + xa - width, y + ya, xa, ya)) collide = true;
-			else sliding = false;
+			if (isBlocking(x + xa - width, y + ya - height, xa, ya)) {
+				collide = true;
+			} else {
+				sliding = false;
+			}
+			if (isBlocking(x + xa - width, y + ya - height / 2, xa, ya)) {
+				collide = true;
+			} else {
+				sliding = false;
+			}
+			if (isBlocking(x + xa - width, y + ya, xa, ya)) {
+				collide = true;
+			} else {
+				sliding = false;
+			}
 		}
 
 		if (collide) {
@@ -552,7 +547,9 @@ public final class Mario extends Sprite implements Cloneable
 
 	public void stomp(final Enemy enemy)
 	{
-		if (deathTime > 0) return;
+		if (deathTime > 0) {
+			return;
+		}
 
 		float targetY = enemy.y - enemy.height / 2;
 		move(0, targetY - y);
@@ -570,7 +567,9 @@ public final class Mario extends Sprite implements Cloneable
 
 	public void stomp(final Shell shell)
 	{
-		if (deathTime > 0) return;
+		if (deathTime > 0) {
+			return;
+		}
 
 		if (keys[KEY_SPEED] && shell.facing == 0) {
 			carried = shell;
@@ -602,18 +601,16 @@ public final class Mario extends Sprite implements Cloneable
 		}
 
 		//System.out.println("[Mario] get hurt! by " + spriteKind);
-		++damage;
 		++collisionsWithCreatures;
 		levelScene.appendBonusPoints(-MarioEnvironment.IntermediateRewardsSystemOfValues.kills);
 		if (large) {
-			//        levelScene.paused = true;
-			//        powerUpTime = -3 * FractionalPowerUpTime;
 			if (fire) {
 				levelScene.mario.setMode(true, false);
 			} else {
 				levelScene.mario.setMode(false, false);
 			}
 			invulnerableTime = 32;
+			//invulnerableTime = 24; // ちょっと短めにとる
 		} else {
 			die("Collision with a creature [" + Sprite.getNameByKind(spriteKind) + "]");
 		}
@@ -633,22 +630,16 @@ public final class Mario extends Sprite implements Cloneable
 		xDeathPos = (int) x;
 		yDeathPos = (int) y;
 		deathTime = 25;
-		damage += 2;
-		//levelScene.paused = true;
-		//System.out.println("[Mario die]: Simulate Mario " + reasonOfDeath);
 		status = Mario.STATUS_DEAD;
 	}
 
 	public void devourFlower()
 	{
-		if (deathTime > 0) return;
+		if (deathTime > 0) {
+			return;
+		}
 
 		if (!fire) {
-			if(!large) {
-				damage -= 2;
-			} else {
-				damage -= 1;
-			}
 			levelScene.mario.setMode(true, true);
 		} else {
 			//Mario.gainCoin();
@@ -659,7 +650,9 @@ public final class Mario extends Sprite implements Cloneable
 
 	public void devourMushroom()
 	{
-		if (deathTime > 0) return;
+		if (deathTime > 0) {
+			return;
+		}
 
 		if (!large) {
 			levelScene.mario.setMode(true, false);
@@ -681,13 +674,11 @@ public final class Mario extends Sprite implements Cloneable
 
 	public void kick(final Shell shell)
 	{
-		//        if (deathTime > 0 || levelScene.paused) return;
 
 		if (keys[KEY_SPEED]) {
 			carried = shell;
 			shell.carried = true;
 			setRacoon(true);
-			//        System.out.println("shell = " + shell);
 		} else {
 			invulnerableTime = 1;
 		}
@@ -740,8 +731,7 @@ public final class Mario extends Sprite implements Cloneable
 	public void setInLadderZone(final boolean inLadderZone)
 	{
 		this.inLadderZone = inLadderZone;
-		if (!inLadderZone)
-		{
+		if (!inLadderZone) {
 			onLadder = false;
 			onTopOfLadder = false;
 		}
@@ -765,13 +755,6 @@ public final class Mario extends Sprite implements Cloneable
 	// append:
 	public int getJumpTime() {
 		return jumpTime;
-	}
-
-	public void addDamage(int d) {
-		damage += d;
-	}
-	public int getDamage() {
-		return damage;
 	}
 
 }

@@ -27,7 +27,6 @@
 
 package task4.sprites;
 
-import ch.idsia.benchmark.mario.engine.Art;
 import task4.engine.LevelScene;
 
 
@@ -47,20 +46,14 @@ public class BulletBill extends Sprite
 	public BulletBill(LevelScene world, float x, float y, int dir)
 	{
 		kind = KIND_BULLET_BILL;
-		sheet = Art.enemies;
 
 		this.x = x;
 		this.y = y;
 		this.world = world;
-		xPicO = 8;
-		yPicO = 31;
 
 		height = 12;
 		facing = 0;
-		wPic = 16;
-		yPic = 5;
 
-		xPic = 0;
 		ya = -5;
 		this.facing = dir;
 	}
@@ -114,7 +107,6 @@ public class BulletBill extends Sprite
 		float sideWaysSpeed = 4f;
 
 		xa = facing * sideWaysSpeed;
-		xFlipPic = facing == -1;
 		move(xa, 0);
 	}
 

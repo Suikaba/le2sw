@@ -27,7 +27,6 @@
 
 package task4.sprites;
 
-import ch.idsia.benchmark.mario.engine.Art;
 import task4.engine.LevelScene;
 
 
@@ -44,19 +43,13 @@ public class FireFlower extends Sprite
 	public FireFlower(LevelScene world, int x, int y)
 	{
 		kind = KIND_FIRE_FLOWER;
-		sheet = Art.items;
 
 		this.x = x;
 		this.y = y;
 		this.world = world;
-		xPicO = 8;
-		yPicO = 15;
 
-		xPic = 1;
-		yPic = 0;
 		height = 12;
 		facing = 1;
-		wPic = hPic = 16;
 		life = 0;
 	}
 

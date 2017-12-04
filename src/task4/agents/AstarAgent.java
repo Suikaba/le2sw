@@ -1,50 +1,29 @@
-/*
- * Copyright (c) 2009-2010, Sergey Karakovskiy and Julian Togelius
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above copyright
- *       notice, this list of conditions and the following disclaimer in the
- *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the Mario AI nor the
- *       names of its contributors may be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- */
 
 package task4.agents;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import ch.idsia.agents.controllers.BasicMarioAIAgent;
+import ch.idsia.benchmark.mario.engine.sprites.Sprite;
 import ch.idsia.benchmark.mario.environments.Environment;
+import ch.idsia.benchmark.mario.environments.MarioEnvironment;
+import ch.idsia.tools.EvaluationInfo;
 import ch.idsia.tools.MarioAIOptions;
 import task4.engine.AstarSimulator;
+import task4.sprites.Enemy;
+import task4.sprites.EnemyInfo;
+import task4.sprites.Mario;
+import task4.sprites.SpriteInfo;
 
-/**
- * Created by IntelliJ IDEA.
- * User: Sergey Karakovskiy, sergey.karakovskiy@gmail.com
- * Date: Apr 8, 2009
- * Time: 4:03:46 AM
- */
 
 public class AstarAgent extends BasicMarioAIAgent
 {
 	private boolean action[] = new boolean[Environment.numberOfKeys];
 	private AstarSimulator simulator;
-	private float lastX = 0;
-	private float lastY = 0;
+	private ArrayList<SpriteInfo> spriteInfo = new ArrayList<SpriteInfo>();
+	private ArrayList<EnemyInfo> enemyInfo = new ArrayList<EnemyInfo>();
+	private int firstStepCount = 0;
 
 	public AstarAgent()
 	{
@@ -58,64 +37,135 @@ public class AstarAgent extends BasicMarioAIAgent
 		simulator = new AstarSimulator();
 	}
 
-	public void resetSimMario(MarioAIOptions options) {
-		simulator.resetSimMario(options);
+	public void resetSimulator(MarioAIOptions options) {
+		simulator.reset(options);
+	}
+
+	/**
+	 * 環境から情報を得る．BasicMarioAIAgent より詳細にとるようにする．
+	 */
+	public void integrateObservation(Environment environment)
+	{
+		final int zLevelScene = 0;
+		final int zLevelEnemies = 0;
+	    levelScene = environment.getLevelSceneObservationZ(zLevelScene);
+	    enemies = environment.getEnemiesObservationZ(zLevelEnemies);
+	    mergedObservation = environment.getMergedObservationZZ(1, 0);
+
+	    this.marioFloatPos = environment.getMarioFloatPos();
+	    this.enemiesFloatPos = environment.getEnemiesFloatPos();
+	    this.marioState = environment.getMarioState();
+
+	    // clone sprites
+	    // enemiesFloatPos などでやるのが筋だが，青クリボー取れないのでしかたなくやっている．
+	    // 大本のデータに影響が出ないようにしてある
+	    List<ch.idsia.benchmark.mario.engine.sprites.Sprite> engineSprites = ((MarioEnvironment)environment).getSprites();
+	    spriteInfo.clear();
+	    enemyInfo.clear();
+	    for(ch.idsia.benchmark.mario.engine.sprites.Sprite sprite : engineSprites) {
+	    	final int kind = sprite.kind;
+	    	if(sprite.isDead() || kind == Sprite.KIND_SPARCLE || kind == Sprite.KIND_PARTICLE || kind == Sprite.KIND_PRINCESS) {
+	    		continue;
+	    	}
+	    	if(Enemy.isEnemy(sprite.kind)) {
+	    		ch.idsia.benchmark.mario.engine.sprites.Enemy enemy = (ch.idsia.benchmark.mario.engine.sprites.Enemy)sprite;
+	    		EnemyInfo info = new EnemyInfo(enemy.x, enemy.y, enemy.xa, enemy.ya, enemy.kind, enemy.facing);
+	    		enemyInfo.add(info);
+	    	} else {
+	    		spriteInfo.add(new SpriteInfo(sprite.x, sprite.y, sprite.xa, sprite.ya, sprite.kind));
+	    	}
+	    }
+
+	    receptiveFieldWidth = environment.getReceptiveFieldWidth();
+	    receptiveFieldHeight = environment.getReceptiveFieldHeight();
+
+	    marioStatus = marioState[0];
+	    marioMode = marioState[1];
+	    isMarioOnGround = marioState[2] == 1;
+	    isMarioAbleToJump = marioState[3] == 1;
+	    isMarioAbleToShoot = marioState[4] == 1;
+	    isMarioCarrying = marioState[5] == 1;
+	    getKillsTotal = marioState[6];
+	    getKillsByFire = marioState[7];
+	    getKillsByStomp = marioState[8];
+	    getKillsByShell = marioState[9];
+
+	    EvaluationInfo evaluationInfo = environment.getEvaluationInfo();
+	    int[] evaluationInfoArr = evaluationInfo.toIntArray();
+	    distancePassedCells = evaluationInfoArr[0];
+	    distancePassedPhys = evaluationInfoArr[1];
+	    flowersDevoured = evaluationInfoArr[2];
+	    mushroomsDevoured = evaluationInfoArr[9];
+	    coinsGained = evaluationInfoArr[10];
+	    timeLeft = evaluationInfoArr[11];
+	    timeSpent = evaluationInfoArr[12];
+	    hiddenBlocksFound = evaluationInfoArr[13];
 	}
 
 	public boolean[] getAction()
 	{
+		/*{
+			System.out.println("==================================================================================");
+		}*/
+
 		// for debug
-		boolean calcTime = true;
+		//simulator.setDebugLevel(LevelScene.DEBUG_ENEMY | LevelScene.DEBUG_MAP | LevelScene.DEBUG_BLOCK);
+		simulator.setDebugLevel(0);
 
 		final long startTime = System.currentTimeMillis();
 
-		byte[][] scene = (byte[][])levelScene.clone(); // 19 x 19
-		float[] enemies = (float[])enemiesFloatPos.clone();
-		float[] realMarioPos = (float[])marioFloatPos.clone();
+		byte[][] scene = levelScene; // 19 x 19
 
-		long t1 = System.currentTimeMillis();
-		simulator.advanceStep(action);
-		long t2 = System.currentTimeMillis();
-		/*if(calcTime) {
-			System.out.println("[Simulator.advanceStep]: " + (t2 - t1) + " ms.");
+		// シミュレータを動かして，現在のフレームまで持ってくる．
+		simulator.advanceStep(simulator.rootScene, action);
+
+		/*{
+			final float simX = simulator.rootScene.mario.x;
+			final float simY = simulator.rootScene.mario.y;
+			final float realX = realMarioPos[0];
+			final float realY = realMarioPos[1];
+			System.out.println("[AstarAgent getAction]: (simX, simY) = (" + simX + ", " + simY + ")");
+			System.out.println("[AstarAgent getAction]: (realX, realY) = (" + realX + ", " + realY + ")");
+			System.out.println("[AstarAgent getAction]: (diffX, diffY) = (" + (realX - simX) + ", " + (realY - simY) + ")");
 		}*/
-		if(simulator.levelScene.mario.x != realMarioPos[0] || simulator.levelScene.mario.y != realMarioPos[1]) {
-			simulator.levelScene.mario.x = realMarioPos[0];
-			simulator.levelScene.mario.xa = (realMarioPos[0] - lastX) * 0.89f;
-			if(Math.abs(simulator.levelScene.mario.y - realMarioPos[1]) > 0.1f) {
-				simulator.levelScene.mario.ya = (realMarioPos[1] - lastY) * 0.85f;
-			}
 
-			simulator.levelScene.mario.y = realMarioPos[1];
-		}
-
-		simulator.setLevelPart(scene, enemies);
+		// シミュレータと真の状況の同期をとる
+		simulator.syncWithGame(scene, enemyInfo, spriteInfo);
+		Mario mario = simulator.rootScene.mario;
 		if(this.marioMode == 2) { // FIRE
-			simulator.levelScene.mario.large = true;
-			simulator.levelScene.mario.fire = true;
+			mario.large = true;
+			mario.fire = true;
 		} else if(this.marioMode == 1) { // LARGE
-			simulator.levelScene.mario.large = true;
-			simulator.levelScene.mario.fire = false;
+			mario.large = true;
+			mario.fire = false;
 		} else {
-			simulator.levelScene.mario.large = false;
-			simulator.levelScene.mario.fire = false;
+			mario.large = false;
+			mario.fire = false;
 		}
-		t2 = System.currentTimeMillis();
-		if(calcTime) {
-			System.out.println("[Simulator.advanceStep]: " + (t2 - t1) + " ms.");
+		/*simulator.rootScene.mario.x = realMarioPos[0];
+		// マジックナンバーは Mario GROUND_INERTIA と AIR_INERTIA から
+		simulator.rootScene.mario.xa = (realMarioPos[0] - lastX) * 0.89f;
+		if(Math.abs(simulator.rootScene.mario.y - realMarioPos[1]) > 0.01f) {
+			simulator.rootScene.mario.ya = (realMarioPos[1] - lastY) * 0.85f + 3.f;
 		}
-		lastX = realMarioPos[0];
-		lastY = realMarioPos[1];
+		simulator.rootScene.mario.y = realMarioPos[1];
+*/
+		long t2 = System.currentTimeMillis();
 
-		action = simulator.optimise(40 - (t2 - t1));
+		/*lastX = realMarioPos[0];
+		lastY = realMarioPos[1];*/
 
-		final long endTime = System.currentTimeMillis();
-		if(calcTime) {
+		if(firstStepCount > 10) {
+			action = simulator.optimise(40 - (t2 - startTime) - 15); // -20 は適当．本家のエンジン遅いのか？40ms も使えないとき多い．
+		} else {
+			firstStepCount++;
+		}
+
+		/*{
+			final long endTime = System.currentTimeMillis();
 			System.out.println("[Agent getAction]: total calc time -> " + (endTime - startTime) + " ms.");
-		}
-
-		//simulator.printScene();
-		//System.out.println("RealMarioPos: " + realMarioPos[0] + " " + realMarioPos[1]);
+			System.out.println("==================================================================================\n");
+		}*/
 
 		return action;
 	}

@@ -30,9 +30,8 @@ package ch.idsia.agents.controllers;
 import ch.idsia.agents.Agent;
 import ch.idsia.benchmark.mario.engine.GeneralizerLevelScene;
 import ch.idsia.benchmark.mario.engine.sprites.Mario;
-import ch.idsia.benchmark.mario.environments.Environment;
 import ch.idsia.benchmark.mario.engine.sprites.Sprite;
-import java.util.Random;
+import ch.idsia.benchmark.mario.environments.Environment;
 
 /**
  * Created by IntelliJ IDEA.
@@ -67,7 +66,7 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 			   || val == GeneralizerLevelScene.FLOWER_POT_OR_CANNON
 			   || val == GeneralizerLevelScene.LADDER;
 	}
-	
+
 	public boolean isCreature(int r, int c) {
 		final int val = getEnemiesCellValue(r, c);
 		return val != Sprite.KIND_NONE;
@@ -86,7 +85,7 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 	{
 		action = new boolean[Environment.numberOfKeys];
 	}
-	
+
 	public boolean canJump()
 	{
 		if(!isMarioAbleToJump && isMarioOnGround) {
@@ -103,7 +102,7 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 		}
 		return ok;
 	}
-	
+
 	public int findFrontEnemy() {
 		int result = -1;
 		for(int c = marioEgoCol + 1; c <= MAX_C; ++c) {
@@ -114,16 +113,16 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 		}
 		return result;
 	}
-	
-	void goLeft() {
+
+	private void goLeft() {
 		action[Mario.KEY_LEFT] = true;
 		action[Mario.KEY_RIGHT] = false;
 	}
-	void goRight() {
+	private void goRight() {
 		action[Mario.KEY_RIGHT] = true;
 		action[Mario.KEY_LEFT] = false;
 	}
-	void actionUpdate() {
+	private void updateAction() {
 		if(action[Mario.KEY_LEFT]) {
 			leftCounter++;
 		} else {
@@ -141,12 +140,9 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 
 	public boolean[] getAction()
 	{
-		final int NOW_R = marioEgoRow;
-		final int NOW_C = marioEgoCol;
-		
 		goRight();
 		action[Mario.KEY_SPEED] = true;
-		
+
 		if(isMarioAbleToJump) {
 			good_jump = false;
 		}
@@ -158,7 +154,7 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 				goLeft();
 			}
 		}
-		
+
 		int frontEnemyCol = findFrontEnemy();
 		if(frontEnemyCol != -1) {
 			action[Mario.KEY_SPEED] = false;
@@ -181,7 +177,7 @@ public class OwnAgent2 extends BasicMarioAIAgent implements Agent
 				goLeft();
 			}
 		}
-		actionUpdate();
+		updateAction();
 	    return action;
 	}
 }

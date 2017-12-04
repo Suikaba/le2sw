@@ -27,7 +27,6 @@
 
 package task4.sprites;
 
-import ch.idsia.benchmark.mario.engine.Art;
 import task4.engine.LevelScene;
 
 
@@ -41,7 +40,6 @@ public class Mushroom extends Sprite
 	private int width = 4;
 	int height = 24;
 
-	private LevelScene world;
 	public int facing;
 
 	public boolean avoidCliffs = false;
@@ -50,18 +48,13 @@ public class Mushroom extends Sprite
 	public Mushroom(LevelScene world, int x, int y)
 	{
 		kind = KIND_MUSHROOM;
-		sheet = Art.items;
 
 		this.x = x;
 		this.y = y;
 		this.world = world;
-		xPicO = 8;
-		yPicO = 15;
 
-		yPic = 0;
 		height = 12;
 		facing = 1;
-		wPic = hPic = 16;
 		life = 0;
 	}
 
@@ -96,8 +89,6 @@ public class Mushroom extends Sprite
 		}
 
 		xa = facing * sideWaysSpeed;
-
-		xFlipPic = facing == -1;
 
 		if (!move(xa, 0)) {
 			facing = -facing;

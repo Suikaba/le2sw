@@ -27,13 +27,11 @@
 
 package task4.sprites;
 
-import ch.idsia.benchmark.mario.engine.Art;
 import task4.engine.LevelScene;
 
 
 public class Shell extends Sprite
 {
-
 	private boolean onGround = false;
 
 	private int width = 4;
@@ -55,20 +53,14 @@ public class Shell extends Sprite
 	public Shell(LevelScene world, float x, float y, int type)
 	{
 		kind = KIND_SHELL;
-		sheet = Art.enemies;
 
 		this.x = x;
 		this.y = y;
 		this.world = world;
-		xPicO = 8;
-		yPicO = 31;
 
-		yPic = type;
 		height = 12;
 		facing = 0;
-		wPic = 16;
 
-		xPic = 4;
 		ya = -5;
 
 		yaa = creaturesGravity * 2;
@@ -95,8 +87,6 @@ public class Shell extends Sprite
 					spriteTemplate.isDead = true;
 				}
 				deadTime = 100;
-				hPic = -hPic;
-				yPicO = -yPicO + 16;
 				return true;
 			}
 		}
@@ -176,11 +166,6 @@ public class Shell extends Sprite
 		if (facing != 0) {
 			world.checkShellCollide(this);
 		}
-
-		xFlipPic = facing == -1;
-
-		xPic = (anim / 2) % 4 + 3;
-
 
 		if (!move(xa, 0)) {
 			facing = -facing;
@@ -364,7 +349,6 @@ public class Shell extends Sprite
 		}
 		return false;
 	}
-
 
 	public void release(Mario mario)
 	{

@@ -6,7 +6,6 @@ import task4.engine.LevelScene;
 
 public class WaveGoomba extends Enemy
 {
-	private LevelScene world;
 	private float amplitude = 10f;
 	private float lastSin;
 	private int sideWayCounter = 0;
@@ -15,10 +14,14 @@ public class WaveGoomba extends Enemy
 	{
 		super(world, x, y, dir, Sprite.KIND_WAVE_GOOMBA, true, mapX, mapY);
 		noFireballDeath = false;
-		this.xPic = 0;
-		this.yPic = 7;
 		this.world = world;
 		lastSin = (float) Math.sin(x);
+	}
+
+	@Override
+	public WaveGoomba clone() throws CloneNotSupportedException {
+		WaveGoomba clone = (WaveGoomba)super.clone();
+		return clone;
 	}
 
 	public void move()
@@ -58,16 +61,6 @@ public class WaveGoomba extends Enemy
 
 		xa = facing * sideWaysSpeed;
 
-		xFlipPic = facing == -1;
-
-		runTime += (Math.abs(xa)) + 5;
-
-		int runFrame = ((int) (runTime / 20)) % 2;
-
-		if (!onGround) {
-			runFrame = 1;
-		}
-
 		if (!move(xa, 0)) {
 			facing = -facing;
 		}
@@ -95,12 +88,13 @@ public class WaveGoomba extends Enemy
 		if (!onGround && !winged) {
 			ya += yaa;
 		}
+	}
 
-		if (winged) {
-			runFrame = wingTime / 4 % 2;
-		}
-
-		xPic = runFrame;
+	public float getLastSin() {
+		return lastSin;
+	}
+	public int getSideWayCounter() {
+		return sideWayCounter;
 	}
 }
 

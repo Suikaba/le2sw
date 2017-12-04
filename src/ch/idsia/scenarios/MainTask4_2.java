@@ -45,7 +45,7 @@ public static void main(String[] args)
     marioAIOptions.setAgent(agent);
 
     marioAIOptions.setArgs("-lco off -lb on -le off -lhb off -lg on -ltb on -lhs off -lca on -lde on -ld 5 -ls 133829");
-    agent.resetSimMario(marioAIOptions);
+    agent.resetSimulator(marioAIOptions);
 
     final BasicTask basicTask = new BasicTask(marioAIOptions);
     basicTask.setOptionsAndReset(marioAIOptions);

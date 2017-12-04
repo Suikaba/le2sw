@@ -27,7 +27,6 @@
 
 package task4.sprites;
 
-import ch.idsia.benchmark.mario.engine.Art;
 import task4.engine.LevelScene;
 
 
@@ -41,8 +40,8 @@ public class Fireball extends Sprite
 	private int width = 4;
 	int height = 24;
 
-	private LevelScene world;
-	public int facing;
+	//private LevelScene world;
+	//public int facing;
 
 	public boolean avoidCliffs = false;
 	public int anim;
@@ -50,29 +49,20 @@ public class Fireball extends Sprite
 	public boolean dead = false;
 	private int deadTime = 0;
 
-	public Fireball(LevelScene world, float x, float y, int facing)
-	{
+	public Fireball(LevelScene world, float x, float y, int facing) {
 		kind = KIND_FIREBALL;
-		sheet = Art.particles;
 
 		this.x = x;
 		this.y = y;
 		this.world = world;
-		xPicO = 4;
-		yPicO = 4;
 
-		yPic = 3;
 		height = 8;
 		this.facing = facing;
-		wPic = 8;
-		hPic = 8;
 
-		xPic = 4;
 		ya = 4;
 	}
 
-	public void move()
-	{
+	public void move() {
 		if (deadTime > 0) {
 			world.removeSprite(this);
 
@@ -95,11 +85,6 @@ public class Fireball extends Sprite
 		xa = facing * sideWaysSpeed;
 
 		world.checkFireballCollide(this);
-
-		xFlipPic = (facing == -1);
-
-		xPic = (anim) % 4;
-
 
 		if (!move(xa, 0)) {
 			die();

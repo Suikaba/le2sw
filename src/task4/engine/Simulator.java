@@ -10,7 +10,7 @@ import ch.idsia.tools.MarioAIOptions;
 import task4.level.Level;
 import task4.sprites.Mario;
 
-public class BeamSearchSimulator {
+public class Simulator {
 
 	private static int BUDGET_SIZE = 16;
 	// 同じ場所に居続けるのは不利
@@ -198,7 +198,7 @@ public class BeamSearchSimulator {
 	private int tooStayX = -1, tooStayY = -1;
 
 
-	public BeamSearchSimulator() {
+	public Simulator() {
 		levelScene = new LevelScene();
 		levelScene.level = new Level(400, 15);
 		mapScore = new float[400][40];
@@ -210,7 +210,7 @@ public class BeamSearchSimulator {
 	 * @param options タスクの設定
 	 */
 	public void resetSimMario(MarioAIOptions options) {
-		levelScene.mario.reset(options);
+		levelScene.mario.resetStatic(options);
 	}
 
 	/**
@@ -219,8 +219,8 @@ public class BeamSearchSimulator {
 	 * @param enemies 敵の配置
 	 */
 	public void setLevelPart(byte[][] levelPart, float[] enemies) {
-		levelScene.setMapData(levelPart);
-		levelScene.updateSpriteInfo(enemies);
+		levelScene.setLevelScene(levelPart);
+		levelScene.setEnemies(enemies);
 	}
 
 	/**

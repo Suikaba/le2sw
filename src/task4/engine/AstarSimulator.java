@@ -3,21 +3,26 @@ package task4.engine;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.PriorityQueue;
 
 import ch.idsia.benchmark.mario.environments.Environment;
 import ch.idsia.tools.MarioAIOptions;
 import task4.level.Level;
+import task4.sprites.EnemyInfo;
 import task4.sprites.Mario;
+import task4.sprites.SpriteInfo;
 
 public class AstarSimulator {
 
-	private static int BUDGET_SIZE = 16;
-	// 同じ場所に居続けるのは不利
-	private static int STAY_LIMIT = 100;
-	private static int MAP_LENGTH = 400;
-	private static int MAP_HEIGHT = 20;
+	private static final int MAP_LENGTH = 400;
+	private static final int MAP_HEIGHT = 20;
+
+	private static final int TOO_STAY_COUNT = 50;
+	private static final float TOO_VISITED_PENALTY = 50.0f;
+
+	private static final int VISITED_BLOCK_SIZE = 8;
 
 	/**
 	 * 探索過程の各状態を表すノード
@@ -25,34 +30,32 @@ public class AstarSimulator {
 	private class SearchNode {
 		// 前状態
 		private SearchNode parent = null;
-		// 現状態の各状況のスナップショット
+		// 現状態のスナップショット
 		private LevelScene snapshot = null;
 
 		// 現状態での行動
 		private boolean[] action;
-		// 繰り返し回数
-		private int repetition;
 
 		// 探索開始から何ステップ目のノードか
 		private int timeElapsed = 0;
 
 		// 現状態のスコア．値が大きい方が良い．
-		private float score;
+		private float cost = 0;
+
+		private boolean hasPenalty = false;
 
 		// todo: スナップショットはここで取るべきな気がする
-		public SearchNode(SearchNode parent, boolean[] action, int repetition) {
+		public SearchNode(SearchNode parent, boolean[] action) {
 			this.parent = parent;
 			this.action = action;
-			this.repetition = repetition;
 
 			if(this.parent != null) {
-				this.timeElapsed = parent.timeElapsed + repetition;
+				this.timeElapsed = parent.timeElapsed + 1;
 			} else {
 				this.timeElapsed = 0;
 			}
 			this.action = action;
-			this.repetition = repetition;
-			this.score = 0;
+			this.cost = 0;
 		}
 
 		/**
@@ -63,7 +66,7 @@ public class AstarSimulator {
 			ArrayList<SearchNode> list = new ArrayList<SearchNode>();
 			ArrayList<boolean[]> actions = enumerateNextActions(this);
 			for(boolean[] action : actions) {
-				SearchNode newNode = new SearchNode(this, action, repetition);
+				SearchNode newNode = new SearchNode(this, action);
 				newNode.simulate();
 				list.add(newNode);
 			}
@@ -71,152 +74,82 @@ public class AstarSimulator {
 		}
 
 		/**
-		 * @return 現在のノードのスコア
-		 * @note 高いほうが良い
-		 */
-		public float getScore() {
-			return score;
-		}
-
-		/**
 		 *  現状態のノードを1ステップシミュレートする
 		 * @return シミュレートした結果のコスト．getCost と同じ値．
 		 */
-		public float simulate() {
-			// シミュレート中の状態を現状態にセットし，コピーをとる．
-			levelScene = parent.snapshot;
-			parent.snapshot = getSnapshot(levelScene);
+		public void simulate() {
+			// シミュレート中の状態を前状態にセットし，コピーをとる．
+			LevelScene nowScene = getSnapshot(parent.snapshot);
+			this.snapshot = nowScene;
 
-			for(int i = 0; i < repetition; ++i) {
-				advanceStep(action);
+			for(int i = 0; i < 2; ++i) { // 1フレームごとに探索はやりすぎなので，2フレームまとめる．
+				advanceStep(nowScene, this.action);
 			}
 
-			int lastDamage = calcMarioDamage();
-			float endX = levelScene.mario.x;
-			float endY = levelScene.mario.y;
-			int xInMap = (int)(endX / BUDGET_SIZE);
-			int yInMap = (int)(endY / BUDGET_SIZE);
-
-			int gapHeight = -1;
-			int startMarioXInMap = (int)(startMarioX / 16);
-			// とりあえず敵を無視して穴かどうかだけ判定
-			// 離れすぎていると，マップデータがまだ無いので穴扱いになってしまう．
-			if(Math.abs(startMarioXInMap - xInMap) < 10) {
-				for(int h = 0; h <= 19; ++h) {
-					if(levelScene.level.getBlock(xInMap, h) != 0 && levelScene.level.getBlock(xInMap, h) != 2) {
-						gapHeight = h;
-					}
-				}
-			}
-
-			// コスト計算部分
-			score = 0;
-			if(yInMap >= 15 || gapHeight == -1 && levelScene.mario.ya > 0 && yInMap >= 10) {
-				//System.out.println("onGap: (" + endX + " ," + endY + "),  start x: " + startMarioX);
-				score = -1e10f;
-			} else {
-				if(yInMap < 0) {
-					yInMap = 0;
-				}
-				if(yInMap >= 0 && yInMap < MAP_HEIGHT && mapScore[xInMap][yInMap] >= STAY_LIMIT) {
-					//System.out.println("Too stay");
-					score -= 1e4;
-				}
-			}
-			// ここがあまりにも雑すぎる
-			if(tooStayCount == 0) {
-				score += (endX - startMarioX) * 10;
-			} else {
-				score += (tooStayX * 16 - endX) * 1e2;
-			}
-			score -= endY + (lastDamage - startDamage) * 1e8;
-			/*if(lastDamage - startDamage > 0) {
-				System.out.println("Damaged");
-			}*/
-			//score -= getMapScore(xInMap, yInMap);
-			if(isVisited(xInMap, yInMap, timeElapsed)) {
-				score -= visitedListPenalty;
-			}
-
-			// シミュレート後の状態を現状態にスナップショットを取っておく
-			snapshot = getSnapshot(levelScene);
-
-			// debug
-			//System.out.println("[SearchNode Debug]");
-			//snapshot.printSpritePos();
-			//System.out.println("[SearchNode]: Mario Pos -- " + snapshot.mario.x + " " + snapshot.mario.y + " " + snapshot.mario.xa + " " + snapshot.mario.ya + "\n");
-
-			return score;
+			this.cost = calcCost(this);
 		}
 	}
 
 	/**
-	 * 探索ノードの比較用．コストが大きい方を優先的に取り出す．
+	 * 探索ノードの比較用．コストが小さい方を優先的に取り出す．
 	 */
 	public class SearchNodeComparator implements Comparator<SearchNode> {
 		@Override
 		public int compare(SearchNode n1, SearchNode n2) {
-			final float score1 = n1.getScore();
-			final float score2 = n2.getScore();
-			if(score1 < score2) {
-				return 1;
-			} else if (score1 > score2) {
+			if(n1.cost < n2.cost) {
 				return -1;
+			} else if (n1.cost > n2.cost) {
+				return 1;
 			} else {
 				return 0;
 			}
 		}
 	}
 
-
-		// シミュレーターでの大本の Scene
-	public LevelScene levelScene = null;
-	private LevelScene workScene = null;
-
-	public int timeBudget = 20;
-	private static final int visitedListPenalty = 1500;
-
-	// マップの各位置の重み．探索の過程で使う．
-	private float[][] mapScore;
-
-	// 前回計算したときの行動プラン
-	private ArrayList<boolean[]> prevPlan = new ArrayList<boolean[]>();
+	/**
+	 * AstarSimulator メンバ変数
+	 */
+	// シミュレーターでの大本の Scene
+	public LevelScene rootScene = null;
 
 	// 探索したところはメモする
-	private HashSet<Integer> visitedStates = new HashSet<Integer>();
+	private HashMap<Integer, Integer> visitedCount = new HashMap<Integer, Integer>();
+	private HashSet<Integer> visitedList = new HashSet<Integer>();
 
-	// 同じ場所にとどまり続けていないか
-	private int tooStayCount = 0;
-	private int tooStayX = -1, tooStayY = -1;
+	// 現状態における穴の状況
+	private int[] gapHeight;
 
-	// 探索開始時のマリオのX座標
-	float startMarioX = 0;
-	// 探索開始時のマリオのダメージ量
-	int startDamage = 0;
-
+	private int lastUpdateOfMaxRight = 0;
+	private float maxRight = 0;
 
 	public AstarSimulator() {
-		levelScene = new LevelScene();
-		levelScene.level = new Level(400, 15);
-		mapScore = new float[MAP_LENGTH][MAP_HEIGHT];
+		rootScene = new LevelScene();
+		rootScene.level = new Level(MAP_LENGTH, MAP_HEIGHT);
+		gapHeight = new int[MAP_LENGTH];
+		//mapCount = new int[MAP_LENGTH][MAP_HEIGHT];
+		//dist = new int[MAP_LENGTH][MAP_HEIGHT];
+		for(int i = 0; i < MAP_LENGTH; ++i) {
+			gapHeight[i] = -2; // 未探索フラグ
+		}
 	}
 
 	/**
-	 * シミュレータのマリオの初期状態を，与えられたタスクのオプションを元に設定する
+	 * シミュレータの各種定数を設定する
 	 * @param options タスクの設定
 	 */
-	public void resetSimMario(MarioAIOptions options) {
-		levelScene.mario.resetStatic(options);
+	public void reset(MarioAIOptions options) {
+		rootScene.reset(options);
 	}
 
 	/**
-	 * シミュレータの状態を，与えられた引数を元に再設定する
+	 * シミュレータの状態を，与えられた引数を元にゲーム本体と同期をとる
 	 * @param levelPart マップのオブジェクト（ブロックなど）の状態
-	 * @param enemies 敵の配置
+	 * @param enemyInfo 敵の情報
+	 * @param spriteInfo 敵以外のスプライトの情報
 	 */
-	public void setLevelPart(byte[][] levelPart, float[] enemies) {
-		levelScene.setLevelScene(levelPart);
-		levelScene.setEnemies(enemies);
+	public void syncWithGame(byte[][] levelPart, ArrayList<EnemyInfo> enemyInfo, ArrayList<SpriteInfo> spriteInfo) {
+		rootScene.setMapData(levelPart);
+		rootScene.updateSpriteInfo(enemyInfo, spriteInfo);
 	}
 
 	/**
@@ -268,13 +201,11 @@ public class AstarSimulator {
 
 		SearchNode currentNode = state;
 		while(currentNode.parent != null) {
-			for(int i = 0; i < currentNode.repetition; ++i) {
-				actions.add(currentNode.action);
-			}
+			actions.add(currentNode.action);
 			currentNode = currentNode.parent;
 		}
 		Collections.reverse(actions);
-		if(actions.size() == 0) {
+		if(actions.size() == 0) { // これもあやしいなあ
 			actions.add(createAction(false, false, false, false, false));
 		}
 		return actions;
@@ -287,67 +218,191 @@ public class AstarSimulator {
 	 */
 	private ArrayList<boolean[]> enumerateNextActions(SearchNode node) {
 		ArrayList<boolean[]> actions = new ArrayList<boolean[]>();
-		boolean jump_ok = canJump(node, true);
+		boolean jumpOK = canJump(node, true);
 		// 左右キー無しは右左を細かくやれば実現できるので書かない
+		// todo: じつは書いたほうが良い？
 
-		if(jump_ok) {
+		if(jumpOK) {
 			actions.add(createAction(false, true, true, true, false));
 		}
 		actions.add(createAction(false, true, false, false, false));
 		actions.add(createAction(false, true, false, true, false));
-		if(jump_ok) {
+		// down 入れないほうが安定する気がしてきた
+		actions.add(createAction(false, true, false, false, true));
+		actions.add(createAction(true, false, false, false, true));
+		//actions.add(createAction(false, true, false, true, true));
+		if(jumpOK) {
 			actions.add(createAction(true, false, true, true, false));
 		}
 		actions.add(createAction(true, false, false, false, false));
 		actions.add(createAction(true, false, false, true, false));
 
-
 		return actions;
 	}
 
 	/**
-	 * @return 現状態におけるマリオのダメージ量
+	 * 以下探索ノードの評価値群
+	 * それぞれの返り値が大きい方が良い
+	 * damageAmount を除くすべてで 0 ~ 1 で値を返すものとする．
 	 */
-	private int calcMarioDamage() {
-		Mario mario = levelScene.mario;
-		return mario.getDamage();
+
+	/**
+	 * ある探索ノードから暫定ゴール地点までの距離
+	 */
+	private float progressRate(SearchNode node) {
+		LevelScene scene = node.snapshot;
+		if(scene == null) {
+			return 1;
+		}
+		float curXf = scene.mario.x;
+		final float screenHalfWidth = 9 * 16;
+		// 絶対値を取るか，右に行きすぎないようにしないと穴があっても右に無理やりいってしまうことがある．
+		// 最大値を1にすることで，多少左に戻る操作が容易いようにしている
+		float goalXf = rootScene.mario.x + screenHalfWidth;
+		/*if(tooStay()) {
+			if(curXf <= maxRight) {
+				return 1;
+			} else {
+				goalXf = (maxRight - 32 + screenHalfWidth);
+				return 0;
+			}
+		}*/
+		return Math.min(1.0f, Math.max(Math.abs(goalXf - curXf), 0) / screenHalfWidth);
+	}
+	/**
+	 * マリオの状態
+	 * @return Fire: 0, Large: 1/3, small: 2/3, Dead: 1
+	 */
+	private float marioMode(SearchNode node) {
+		LevelScene scene = node.snapshot;
+		if(scene == null || rootScene == null) {
+			return 1;
+		}
+		Mario mario = node.snapshot.mario;
+		if(mario.getStatus() == Mario.STATUS_DEAD) {
+			return 1;
+		}
+		return (2 - mario.getMode()) / 3.0f;
+	}
+	/**
+	 * 穴に落ちなさそうか
+	 */
+	private float fallingGap(SearchNode node) {
+		LevelScene scene = node.snapshot;
+		if(scene == null) {
+			return 1;
+		}
+		int curXInMap = (int)(scene.mario.x / 16);
+		int curYInMap = (int)(scene.mario.y / 16);
+		int gapWidth = 0;
+		for(int x = curXInMap; x <= curXInMap + 9; ++x) {
+			if(gapHeight[x] != -1) {
+				break;
+			}
+			gapWidth++;
+		}
+		if(gapWidth >= 7) {
+			if(curYInMap >= 8) { // 穴が大きくて十分高くなかったらダメ(雑なのでだめになったら再検討．
+				return 1;
+			}
+		}
+		if(curYInMap >= 15 || gapHeight[curXInMap] == -1 && curYInMap >= 10 && scene.mario.ya > 0
+			|| gapHeight[curXInMap] > 7 && gapHeight[curXInMap] < curYInMap && scene.mario.ya > 0) {
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+	/**
+	 * 探索ノードを探索した回数
+	 */
+	private float visitedCount(SearchNode node) {
+		LevelScene scene = node.snapshot;
+		if(scene == null) {
+			return 1;
+		}
+		int curX = (int)(scene.mario.x / VISITED_BLOCK_SIZE);
+		int curY = (int)(scene.mario.y / VISITED_BLOCK_SIZE);
+		int count = getVisitedCount(curX, curY, 0);
+		if(count > 20) {
+			return 10.f;
+		} else {
+			return count / 20.f;
+		}
+	}
+	private float height(SearchNode node) {
+		LevelScene scene = node.snapshot;
+		if(scene == null) {
+			return 1;
+		}
+		return scene.mario.y / 256.0f;
+	}
+
+	private float calcCost(SearchNode node) {
+		float cost = progressRate(node) * (tooStay() ? 3.f : 50.0f)  // 進行度合いは当然大事
+					+ marioMode(node) * 50000.f       // ダメージは重い
+					+ fallingGap(node) * 100000.f  // 穴に落ちていれば何よりもまずい
+					+ visitedCount(node) * (tooStay() ? 500.f : 0f)
+					+ node.timeElapsed * 0.01f
+					+ height(node) * (tooStay() ? 4.f : 55.f);
+		return cost;
 	}
 
 	/**
-	 * @return ある地点における，到達回数による重み
+	 * 現状態で見える範囲の穴の状況を求める．
 	 */
-	private float getMapScore(int x, int y) {
-		if(y < 0) {
-			y = 0;
+	private void searchGap() {
+		if(rootScene == null) {
+			return;
 		}
-		if(y >= 20) {
-			y = 19;
+		int marioX = rootScene.mario.mapX;
+		for(int x = marioX - 9; x <= marioX + 9; ++x) {
+			if(x < 0 || MAP_LENGTH <= x) {
+				continue;
+			}
+			for(int y = 0; y < MAP_HEIGHT; ++y) {
+				if(rootScene.level.getBlock(x, y) != 0 && rootScene.level.getBlock(x, y) != 2) {
+					gapHeight[x] = y;
+				}
+			}
+			if(gapHeight[x] == -2) {
+				gapHeight[x] = -1; // 穴
+			}
 		}
-		return mapScore[x][y];
+	}
+
+	/**
+	 * 長時間進行しない，スタック状態にあるか．
+	 */
+	private boolean tooStay() {
+		return lastUpdateOfMaxRight >= TOO_STAY_COUNT;
 	}
 
 	/**
 	 *  探索開始ノードを現状態にセットし，探索の準備を整える．
 	 */
-	private SearchNode startSearch() {
-		SearchNode root = new SearchNode(null, null, 1);
-		root.snapshot = getSnapshot(levelScene);
-		startMarioX = levelScene.mario.x;
-		startDamage = levelScene.mario.getDamage();
-		visitedStates.clear();
+	private SearchNode prepareSearch() {
+		SearchNode root = new SearchNode(null, createAction(false, false, false, false, false));
+		root.snapshot = getSnapshot(rootScene);
+		searchGap();
+		//visitedCount.clear();
+		visitedList.clear();
 		return root;
 	}
 
 	/**
 	 *  あるシーンの状態のコピーを取得する．
 	 *
-	 * @param l コピーしたいシーン
+	 * @param scene コピーしたいシーン
 	 * @return 引数に与えたシーンのコピー
 	 */
-	public LevelScene getSnapshot(LevelScene l) {
+	private LevelScene getSnapshot(LevelScene scene) {
+		if(scene == null) { // todo: 例外とか投げるべき？
+			return null;
+		}
 		LevelScene snapshot = null;
 		try {
-			snapshot = (LevelScene)l.clone();
+			snapshot = (LevelScene)scene.clone();
 		} catch(CloneNotSupportedException ex) {
 			ex.printStackTrace();
 		}
@@ -355,21 +410,14 @@ public class AstarSimulator {
 	}
 
 	/**
-	 * 大本のシーンを引数のシーンに戻す
-	 * @param l 戻す先のシーン
-	 */
-	public void restoreState(LevelScene l) {
-		levelScene = l;
-	}
-
-	/**
-	 *  現状態を1ステップ進める．
+	 *  指定されたシーンを，与えられた入力により1ステップ進める．
 	 *
+     * @param scene 進めるシーン
 	 * @param action 現状態でどのような行動をとるか
 	 */
-	public void advanceStep(boolean[] action) {
-		levelScene.mario.setKeys(action);
-		levelScene.tick();
+	public void advanceStep(LevelScene scene, boolean[] action) {
+		scene.mario.setKeys(action);
+		scene.tick();
 	}
 
 	/**
@@ -379,73 +427,56 @@ public class AstarSimulator {
 	 * @return 最良の行動
 	 */
 	public boolean[] optimise(long restTime) {
-		LevelScene currentScene = getSnapshot(levelScene);
-		if(workScene == null) {
-			workScene = levelScene;
-		}
-
 		long startTime = System.currentTimeMillis();
 
-		SearchNode rootNode = startSearch();
-
-		Comparator<SearchNode> comparator = new SearchNodeComparator();
-		PriorityQueue<SearchNode> openNode = new PriorityQueue<SearchNode>(1, comparator);
+		SearchNode rootNode = prepareSearch();
+		PriorityQueue<SearchNode> openNode = new PriorityQueue<SearchNode>(1, new SearchNodeComparator());
 		openNode.add(rootNode);
-		final int maxDepth = 300;
-		int count = 0;
-		System.out.println("RestTime: " + restTime);
-		while(!openNode.isEmpty() && count < maxDepth) {
-			if(System.currentTimeMillis() - startTime > restTime - 20) {
+		final int maxDepth = 10000;
+		for(int i = 0; i < maxDepth && !openNode.isEmpty(); ++i) {
+			if(System.currentTimeMillis() - startTime > restTime - 5) { // -5 は余裕を持たせている．
 				break;
 			}
-			count++;
-			SearchNode currentBest = openNode.poll();
-			openNode.addAll(currentBest.createNextNode());
-			int curX = (int)(currentBest.snapshot.mario.x / 16);
-			int curY = (int)(currentBest.snapshot.mario.y / 16);
-			int t = currentBest.timeElapsed;
-			visited(curX, curY, t);
-		}
-
-		restoreState(currentScene);
-
-		// とどまりすぎていないかチェック
-		float marioXf = levelScene.mario.x;
-		float marioYf = levelScene.mario.y;
-		int marioX = (int)(marioXf / 16);
-		int marioY = (int)(marioYf / 16);
-		for(int dx = -1; dx <= 1; ++dx) {
-			for(int dy = -1; dy <= 1; ++dy) {
-				int x = marioX + dx, y = marioY + dy;
-				if(x < 0 || x >= MAP_LENGTH || y < 0 || y >= MAP_HEIGHT) {
-					continue;
-				}
-				mapScore[x][y] += Math.max(0, 3 - Math.abs(marioX - x) - Math.abs(marioY - y));
+			SearchNode openBest = openNode.poll();
+			if(maxRight + 9.5f * 16 - rootScene.mario.x <= 0) { // 右端に到達したら打ち切る
+				openNode.add(openBest);
+				break;
 			}
-		}
-		if(marioY >= 0 && mapScore[marioX][marioY] >= STAY_LIMIT) {
-			tooStayCount = 30;
-			tooStayX = marioX;
-			tooStayY = marioY;
-			//System.out.println("too Stay pos: " + tooStayX + " " + tooStayY);
-		} else {
-			tooStayCount--;
-			if(tooStayCount < 0) {
-				tooStayCount = 0;
+			int x = (int)(openBest.snapshot.mario.x / VISITED_BLOCK_SIZE);
+			int y = (int)(openBest.snapshot.mario.y / VISITED_BLOCK_SIZE);
+			int t = openBest.timeElapsed;
+			if(isVisited(x, y, t) && !openBest.hasPenalty) { // ペナルティつけられてもなお良いなら，選択する
+				openBest.cost += TOO_VISITED_PENALTY;
+				openBest.hasPenalty = true;
+				openNode.add(openBest);
+			} else {
+				openNode.addAll(openBest.createNextNode());
 			}
-		}
-		if(tooStayX != -1 && tooStayX + 5 < marioX) {
-			tooStayX = tooStayY = -1;
+			addVisitedList(x, y, t);
 		}
 
-		SearchNode best = openNode.poll();
+		PriorityQueue<SearchNode> closedNodes = openNode; // これちょっと変なんだけど，こうしたほうが結果的に良かった
+		SearchNode best = closedNodes.poll();
 		ArrayList<boolean[]> actions = extractPlan(best);
-		int damage = best.snapshot.mario.getDamage() - levelScene.mario.getDamage();
-		System.out.println("[Simulator.optimise]: cur -> " + marioXf + " " + marioYf);
-		System.out.println("[Simulator.optimise]: best -> " + best.snapshot.mario.x + " " + best.snapshot.mario.y + " " + damage);
-		boolean[] action = actions.remove(0);
+		boolean[] action = actions.get(0);
+
+		float marioXf = rootScene.mario.x;
+		float marioYf = rootScene.mario.y;
+		if(maxRight < marioXf) {
+			lastUpdateOfMaxRight = 0;
+			maxRight = marioXf;
+			visitedCount.clear();
+		} else {
+			lastUpdateOfMaxRight++;
+		}
+
+		// スタック状態なら現在位置を visitedCount に重み付ける
+		if(tooStay()) {
+			// t はあえて入れていない（入れないほうが良かったため
+			visited((int)marioXf / VISITED_BLOCK_SIZE, (int)marioYf / VISITED_BLOCK_SIZE, 0);
+		}
+
 		return action;
-		//return actions.get(0);
 	}
 
 	/**
@@ -455,30 +486,72 @@ public class AstarSimulator {
 	 * @param t 時刻（ステップ数）
 	 */
 	private void visited(int x, int y, int t) {
-		visitedStates.add(calcHash(x, y, t));
+		final int hs = calcHash(x, y, t);
+		int cnt = 0;
+		if(visitedCount.containsKey(hs)) {
+			cnt = visitedCount.get(hs);
+		}
+		visitedCount.put(hs, cnt + 1);
+	}
+	private void addVisitedList(int x, int y, int t) {
+		final int hs = calcHash(x, y, t);
+		visitedList.add(hs);
 	}
 
-	/**
-	 * 探索したか
-	 */
+	private int getVisitedCount(int x, int y, int t) {
+		final int hs = calcHash(x, y, t);
+		if(visitedCount.containsKey(hs)) {
+			return visitedCount.get(hs);
+		} else {
+			return 0;
+		}
+	}
 	private boolean isVisited(int x, int y, int t) {
-		return visitedStates.contains((int)calcHash(x, y, t));
+		boolean result = false;
+		final int dt = (tooStay() ? 1 : 0);
+		for(int i = t - dt; i <= t + dt; ++i) {
+			result |= visitedList.contains(calcHash(x, y, i));
+		}
+		return result;
 	}
 	private int calcHash(int x, int y, int t) {
-		final long base = 29;
-		final long M = 1000000007;
-		long hs = (x * base * base + y * base + t) % M;
+		final long base = 9973;
+		final long mod = 1000000007;
+		final long hs = (x * base * base + y * base + t) % mod;
 		return (int)hs;
 	}
 
+
 	// for debug
 	public void setDebugLevel(int debugLevel) {
-	//	levelScene.DEBUG_LEVEL = debugLevel;
+		rootScene.setDebugLevel(debugLevel);
 	}
 	public void printScene() {
 		System.out.println("[Simulator Debug]");
-		levelScene.printSpritePos();
-		System.out.println("Mario.pos = (" + levelScene.mario.x + ", " + levelScene.mario.y + ")");
+		rootScene.printSpritePos();
+		System.out.println("Mario.pos = (" + rootScene.mario.x + ", " + rootScene.mario.y + ")");
+	}
+	private void printCost(SearchNode node) {
+		float pR = progressRate(node);
+		float mode = marioMode(node);
+		float gap = fallingGap(node);
+		float vis = visitedCount(node);
+		float h = height(node);
+		System.out.println("[Node]: (pRate, mode, gap, visited, h) = "
+							 + pR + ", " + mode + ", " + gap + ", " + vis + ", " + h + ")");
+	}
+	private void printNodeInfo(SearchNode node) {
+		if(node == null) {
+			return;
+		}
+		Mario mario = node.snapshot.mario;
+		float x = mario.x;
+		float y = mario.y;
+		int t = node.timeElapsed;
+		String mode = Mario.MODES[mario.getMode()];
+
+		System.out.println("[Node]: (x, y, t, mode) = (" + x + ", " + y + ", " + t + ", " + mode + ")");
+		printCost(node);
 	}
 
 }

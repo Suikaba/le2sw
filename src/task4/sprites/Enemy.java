@@ -27,7 +27,6 @@
 
 package task4.sprites;
 
-import ch.idsia.benchmark.mario.engine.Art;
 import ch.idsia.benchmark.mario.engine.GlobalOptions;
 import task4.engine.LevelScene;
 
@@ -41,7 +40,6 @@ public class Enemy extends Sprite
 	public static final int IN_FILE_POS_FLOWER = 4;
 	public static final int POSITION_WAVE_GOOMBA = 7;
 
-	public float runTime;
 	public boolean onGround = false;
 
 	int width = 4;
@@ -65,7 +63,6 @@ public class Enemy extends Sprite
 	public Enemy(LevelScene levelScene, int x, int y, int dir, int type, boolean winged, int mapX, int mapY)
 	{
 		kind = (byte) type;
-		sheet = Art.enemies;
 		this.winged = winged;
 
 		this.x = x;
@@ -74,8 +71,6 @@ public class Enemy extends Sprite
 		this.mapY = mapY;
 
 		this.world = levelScene;
-		xPicO = 8;
-		yPicO = 31;
 
 		yaa = creaturesGravity * 2;
 		yaw = creaturesGravity == 1 ? 1 : 0.3f * creaturesGravity;
@@ -84,35 +79,28 @@ public class Enemy extends Sprite
 		{
 		case KIND_GOOMBA:
 		case KIND_GOOMBA_WINGED:
-			yPic = IN_FILE_POS_GOOMBA;
-			break;
-		case KIND_RED_KOOPA:
-		case KIND_RED_KOOPA_WINGED:
-			yPic = IN_FILE_POS_RED_KOOPA;
-			break;
-		case KIND_GREEN_KOOPA:
-		case KIND_GREEN_KOOPA_WINGED:
-			yPic = IN_FILE_POS_GREEN_KOOPA;
-			break;
 		case KIND_SPIKY:
 		case KIND_SPIKY_WINGED:
-			yPic = IN_FILE_POS_SPIKY;
-			break;
 		case KIND_ENEMY_FLOWER:
-			yPic = IN_FILE_POS_FLOWER;
-			break;
 		case KIND_WAVE_GOOMBA:
-			yPic = POSITION_WAVE_GOOMBA;
+			height = 12;
 			break;
 		}
 
 		avoidCliffs = kind == KIND_RED_KOOPA;
 
 		noFireballDeath = (kind == KIND_SPIKY || kind == KIND_SPIKY_WINGED);
-		if (yPic > 1) height = 12;
 		facing = dir;
-		if (facing == 0) facing = 1;
-		this.wPic = 16;
+		if (facing == 0) {
+			facing = 1;
+		}
+	}
+
+	@Override
+	public Enemy clone() throws CloneNotSupportedException {
+		Enemy clone = (Enemy)super.clone();
+		clone.world = null;
+		return clone;
 	}
 
 	public void collideCheck()
@@ -123,7 +111,6 @@ public class Enemy extends Sprite
 
 		float xMarioD = world.mario.x - x;
 		float yMarioD = world.mario.y - y;
-		//System.out.println("[Enemy]: collideCheck mariopos = " + world.mario.x + " " + world.mario.y);
 
 		if (xMarioD > -width * 2 - 4 && xMarioD < width * 2 + 4) {
 			if (yMarioD > -height && yMarioD < world.mario.height) {
@@ -134,8 +121,6 @@ public class Enemy extends Sprite
 						ya = 0;
 
 					} else {
-						this.yPicO = 31 - (32 - 8);
-						hPic = 8;
 						if (spriteTemplate != null) {
                             spriteTemplate.isDead = true;
                         }
@@ -179,7 +164,6 @@ public class Enemy extends Sprite
 		}
 
 		float sideWaysSpeed = 1.75f;
-		//        float sideWaysSpeed = onGround ? 2.5f : 1.2f;
 
 		if (xa > 2) {
 			facing = 1;
@@ -188,18 +172,6 @@ public class Enemy extends Sprite
 		}
 
 		xa = facing * sideWaysSpeed;
-		//    xa += facing == 1 ? -wind : wind;
-		//        mayJump = (onGround);
-
-		xFlipPic = facing == -1;
-
-		runTime += (Math.abs(xa)) + 5;
-
-		int runFrame = ((int) (runTime / 20)) % 2;
-
-		if (!onGround) {
-			runFrame = 1;
-		}
 
 		if (!move(xa, 0))  {
 			facing = -facing;
@@ -224,11 +196,6 @@ public class Enemy extends Sprite
 			ya = -10;
 		}
 
-		if (winged) {
-			runFrame = wingTime / 4 % 2;
-		}
-
-		xPic = runFrame;
 	}
 
 	public boolean move(float xa, float ya)
@@ -365,8 +332,6 @@ public class Enemy extends Sprite
 				if (spriteTemplate != null) spriteTemplate.isDead = true;
 				deadTime = 100;
 				winged = false;
-				hPic = -hPic;
-				yPicO = -yPicO + 16;
 				++this.world.killedCreaturesTotal;
 				++this.world.killedCreaturesByShell;
 				return true;
@@ -396,8 +361,6 @@ public class Enemy extends Sprite
 				if (spriteTemplate != null) spriteTemplate.isDead = true;
 				deadTime = 100;
 				winged = false;
-				hPic = -hPic;
-				yPicO = -yPicO + 16;
 				++this.world.killedCreaturesTotal;
 				++this.world.killedCreaturesByFireBall;
 				return true;
@@ -421,9 +384,29 @@ public class Enemy extends Sprite
 			}
 			deadTime = 100;
 			winged = false;
-			hPic = -hPic;
-			yPicO = -yPicO + 16;
 		}
+	}
+
+
+	/**
+	 * Spriteの種類が敵か判定
+	 */
+	public static boolean isEnemy(int kind) {
+		switch (kind)
+		{
+		case KIND_GOOMBA:
+		case KIND_GOOMBA_WINGED:
+		case KIND_RED_KOOPA:
+		case KIND_RED_KOOPA_WINGED:
+		case KIND_GREEN_KOOPA:
+		case KIND_GREEN_KOOPA_WINGED:
+		case KIND_SPIKY:
+		case KIND_SPIKY_WINGED:
+		case KIND_ENEMY_FLOWER:
+		case KIND_WAVE_GOOMBA:
+			return true;
+		}
+		return false;
 	}
 
 }

@@ -35,16 +35,13 @@ public class FlowerEnemy extends Enemy
 	private int tick;
 	private int yStart;
 	private int jumpTime = 0;
-	private LevelScene world;
+	//private LevelScene world;
 
 	public FlowerEnemy(LevelScene world, int x, int y, int mapX, int mapY)
 	{
 		super(world, x, y, 1, Sprite.KIND_ENEMY_FLOWER, false, mapX, mapY);
 		noFireballDeath = false;
 		this.world = world;
-		this.xPic = 0;
-		this.yPic = 6;
-		this.yPicO = 24;
 		this.height = 12;
 		this.width = 2;
 
@@ -103,8 +100,6 @@ public class FlowerEnemy extends Enemy
 		y += ya;
 		ya *= 0.9;
 		ya += 0.1f;
-
-		xPic = ((tick / 2) & 1) * 2 + ((tick / 6) & 1);
 	}
 }
 
